@@ -2,11 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Product;
 use App\Models\Branch;
-use App\Models\Order;
+use App\Models\Product;
+use App\Models\JobOrder;
+use App\Models\Reservation;
+use App\Http\Requests\StoreReservationRequest;
+use App\Http\Requests\TrackJobRequest;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Route;
 
 class PublicController extends Controller
 {
@@ -14,90 +18,57 @@ class PublicController extends Controller
     {
         $branchId = $request->query('branch');
         
-        $products = Product::with(['category', 'branchInventory' => function($q) use ($branchId) {
-            if ($branchId) {
-                $q->where('branch_id', $branchId);
-            }
-        }])
-        ->where('is_active', true)
-        ->get()
-        ->map(function($product) {
-            $product->available_quantity = $product->branchInventory->sum('available_quantity');
-            return $product;
-        });
+        $products = Product::query()
+            ->when($branchId, function ($query, $branchId) {
+                $query->whereHas('branches', function ($q) use ($branchId) {
+                    $q->where('branches.id', $branchId);
+                });
+            })
+            ->with(['branches' => function($q) {
+                $q->select('branches.id', 'name')->withPivot('stock_quantity');
+            }])
+            ->get();
 
-        $branches = Branch::where('is_active', true)->get();
-
-        return Inertia::render('Public/Shop', [
+        return Inertia::render('Public/Index', [
             'products' => $products,
-            'branches' => $branches,
+            'branches' => Branch::select('id', 'name')->get(),
+            'currentBranch' => $branchId,
+            'canLogin' => Route::has('login'),
         ]);
     }
 
-    public function createReservation(Request $request)
+    public function track()
     {
-        $validated = $request->validate([
-            'customer_name' => 'required|string',
-            'customer_email' => 'nullable|email',
-            'customer_phone' => 'required|string',
-            'branch_id' => 'required|exists:branches,id',
-            'items' => 'required|array|min:1',
-            'items.*.product_id' => 'required|exists:products,id',
-            'items.*.quantity' => 'required|integer|min:1',
-        ]);
+        return Inertia::render('Public/Tracker');
+    }
 
-        $customer = \App\Models\Customer::firstOrCreate(
-            ['phone' => $validated['customer_phone']],
-            [
-                'name' => $validated['customer_name'],
-                'email' => $validated['customer_email'],
-                'customer_code' => 'CUST-' . now()->format('YmdHis'),
-            ]
-        );
+    public function searchJob(TrackJobRequest $request)
+    {
+        $job = JobOrder::where('tracking_code', $request->tracking_code)
+            ->with('branch:id,name')
+            ->first();
 
-        $subtotal = 0;
-        foreach ($validated['items'] as $item) {
-            $product = Product::find($item['product_id']);
-            $subtotal += $product->price * $item['quantity'];
+        // Since validation passes, we know tracking_code exists, 
+        // but double check if it returns a model just in case of race condition or soft deletes logic
+        if (!$job) {
+             return back()->withErrors(['tracking_code' => 'Job order not found.']);
         }
 
-        $order = Order::create([
-            'order_number' => 'RES-' . now()->format('YmdHis') . '-' . rand(1000, 9999),
+        return back()->with('job', $job);
+    }
+
+    public function storeReservation(StoreReservationRequest $request)
+    {
+        $validated = $request->validated();
+
+        Reservation::create([
             'branch_id' => $validated['branch_id'],
-            'customer_id' => $customer->id,
-            'user_id' => 1, // System user
-            'type' => 'reservation',
-            'status' => 'pending',
-            'subtotal' => $subtotal,
-            'total' => $subtotal,
-            'paid_amount' => 0,
+            'customer_name' => $validated['customer_name'],
+            'customer_contact' => $validated['customer_contact'],
+            'items' => $validated['items'],
+            'status' => 'pending'
         ]);
 
-        foreach ($validated['items'] as $item) {
-            $product = Product::find($item['product_id']);
-            \App\Models\OrderItem::create([
-                'order_id' => $order->id,
-                'product_id' => $item['product_id'],
-                'quantity' => $item['quantity'],
-                'unit_price' => $product->price,
-                'total' => $product->price * $item['quantity'],
-            ]);
-        }
-
-        return response()->json([
-            'message' => 'Reservation created successfully',
-            'order_number' => $order->order_number,
-        ]);
-    }
-
-    public function checkOrder(Request $request, $orderNumber)
-    {
-        $order = Order::with(['items.product', 'branch'])
-            ->where('order_number', $orderNumber)
-            ->firstOrFail();
-
-        return Inertia::render('Public/OrderStatus', [
-            'order' => $order,
-        ]);
+        return back()->with('success', 'Reservation submitted successfully!');
     }
 }

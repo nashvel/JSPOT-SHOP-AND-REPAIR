@@ -1,261 +1,59 @@
-# Advanced Point of Sale System
+<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
 
-A comprehensive, multi-branch POS system built with Laravel, Inertia.js, Vue 3, and TypeScript. Designed for motor shops with support for sales, reservations, inventory management, and public e-commerce features.
+<p align="center">
+<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
+<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
+<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
+<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
+</p>
 
-## Features
+## About Laravel
 
-### Core Features
-- **Multi-Branch Management**: Main branch can track all branch sales and inventory
-- **Dynamic POS Interface**: Fast, responsive point-of-sale with barcode scanning
-- **Public E-Commerce**: Customers can view products and make reservations online
-- **Order Tracking**: Customers can check order status using order numbers
-- **Inventory Management**: Real-time stock tracking across all branches
-- **Customer Management**: Track customer information and purchase history
+Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
 
-### Advanced Features
-- **Role-Based Access Control**: Dynamic permissions for different user roles
-- **User Impersonation**: Developers can impersonate any user for testing/support
-- **Barcode Support**: Scan products using barcode readers
-- **Multiple Payment Methods**: Cash, card, bank transfer, e-wallets
-- **Reservation System**: Customers can reserve items and check completion status
-- **Support Ticketing**: Built-in IT support contact system
-- **Dynamic Custom Fields**: Extensible data structure for products and orders
+- [Simple, fast routing engine](https://laravel.com/docs/routing).
+- [Powerful dependency injection container](https://laravel.com/docs/container).
+- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
+- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
+- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
+- [Robust background job processing](https://laravel.com/docs/queues).
+- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
 
-### Security Features
-- **CSRF Protection**: Laravel's built-in CSRF protection
-- **SQL Injection Prevention**: Eloquent ORM with prepared statements
-- **XSS Protection**: Vue.js automatic escaping
-- **Authentication**: Laravel Sanctum for API authentication
-- **Role-Based Authorization**: Spatie Permission package
-- **Password Hashing**: Bcrypt hashing
-- **Session Security**: Secure session management
+Laravel is accessible, powerful, and provides tools required for large, robust applications.
 
-## Tech Stack
+## Learning Laravel
 
-- **Backend**: Laravel 12
-- **Frontend**: Vue 3 + TypeScript
-- **Bridge**: Inertia.js
-- **Database**: MySQL
-- **Build Tool**: Vite
-- **Styling**: Tailwind CSS (recommended)
-- **Authentication**: Laravel Sanctum
-- **Permissions**: Spatie Laravel Permission
+Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
 
-## Installation
+If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
 
-### Prerequisites
-- PHP 8.2+
-- Composer
-- Node.js 18+
-- MySQL 8.0+
+## Laravel Sponsors
 
-### Setup Steps
+We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
 
-1. **Clone and Install Dependencies**
-```bash
-cd advanced-pos-system
-composer install
-npm install
-```
+### Premium Partners
 
-2. **Environment Configuration**
-```bash
-cp .env.example .env
-php artisan key:generate
-```
+- **[Vehikl](https://vehikl.com)**
+- **[Tighten Co.](https://tighten.co)**
+- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
+- **[64 Robots](https://64robots.com)**
+- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
+- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
+- **[Redberry](https://redberry.international/laravel-development)**
+- **[Active Logic](https://activelogic.com)**
 
-3. **Database Setup**
-Edit `.env` file with your database credentials:
-```env
-DB_CONNECTION=mysql
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_DATABASE=advanced_pos
-DB_USERNAME=root
-DB_PASSWORD=your_password
-```
+## Contributing
 
-4. **Run Migrations and Seeders**
-```bash
-php artisan migrate:fresh --seed
-```
+Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
 
-5. **Publish Vendor Assets**
-```bash
-php artisan vendor:publish --provider="Spatie\Permission\PermissionServiceProvider"
-```
+## Code of Conduct
 
-6. **Build Frontend Assets**
-```bash
-npm run dev
-```
+In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
 
-7. **Start Development Server**
-```bash
-php artisan serve
-```
+## Security Vulnerabilities
 
-Visit `http://localhost:8000`
-
-## Default Credentials
-
-### Developer Account
-- Email: `dev@motorshop.com`
-- Password: `password`
-- Role: Developer (full access + impersonation)
-
-### Admin Account
-- Email: `admin@motorshop.com`
-- Password: `password`
-- Role: Admin (full management access)
-
-## User Roles & Permissions
-
-### Developer
-- Full system access
-- User impersonation
-- System configuration
-- All admin permissions
-
-### Admin
-- Manage all branches
-- User management
-- Product & inventory management
-- View all reports
-- Manage settings
-
-### Manager
-- Branch-specific management
-- Product & inventory management
-- Customer management
-- View branch reports
-
-### Cashier
-- Process sales
-- View dashboard
-- Basic customer lookup
-
-## API Endpoints
-
-### Public API
-- `GET /` - Public shop view
-- `POST /api/public/reservations` - Create reservation
-- `GET /order/{orderNumber}` - Check order status
-
-### Authenticated API
-- `GET /dashboard` - Dashboard with stats
-- `GET /pos` - POS interface
-- `POST /pos` - Process order
-- `GET /api/pos/search-barcode` - Search by barcode
-- `GET /users` - User management (admin+)
-- `POST /users/{user}/impersonate` - Impersonate user (developer only)
-
-## Database Schema
-
-### Key Tables
-- `branches` - Store locations
-- `users` - System users with branch assignment
-- `products` - Product catalog
-- `categories` - Product categories
-- `branch_inventory` - Branch-specific stock levels
-- `customers` - Customer information
-- `orders` - Sales, reservations, and service orders
-- `order_items` - Order line items
-- `payments` - Payment records
-- `support_tickets` - IT support tickets
-
-## Customization
-
-### Adding Custom Fields
-Products and orders support JSON custom fields:
-
-```php
-$product->custom_fields = [
-    'warranty_months' => 12,
-    'supplier' => 'ABC Motors',
-    'color' => 'Red'
-];
-```
-
-### Adding Payment Methods
-Edit the payment method options in:
-- `app/Http/Controllers/POSController.php`
-- Frontend payment components
-
-### Branch Settings
-Each branch can have custom settings stored as JSON:
-
-```php
-$branch->settings = [
-    'tax_rate' => 0.12,
-    'receipt_footer' => 'Thank you!',
-    'allow_credit' => true
-];
-```
-
-## Production Deployment
-
-1. **Environment**
-```bash
-APP_ENV=production
-APP_DEBUG=false
-```
-
-2. **Optimize**
-```bash
-composer install --optimize-autoloader --no-dev
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
-npm run build
-```
-
-3. **Security**
-- Enable HTTPS
-- Set secure session cookies
-- Configure CORS properly
-- Use strong database passwords
-- Enable rate limiting
-- Regular security updates
-
-4. **Performance**
-- Enable Redis for caching
-- Configure queue workers
-- Use CDN for assets
-- Enable database indexing
-- Optimize images
-
-## Troubleshooting
-
-### Common Issues
-
-**Migration Errors**
-```bash
-php artisan migrate:fresh --seed
-```
-
-**Permission Errors**
-```bash
-php artisan cache:clear
-php artisan config:clear
-composer dump-autoload
-```
-
-**Frontend Not Loading**
-```bash
-npm run build
-php artisan view:clear
-```
-
-## Support
-
-For issues and feature requests, use the built-in support ticket system or contact your system administrator.
+If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
 
 ## License
 
-Proprietary - All rights reserved
-
-## Development Team
-
-Built with ❤️ for modern retail businesses
-# JSPOT-CARS---MOTORS
+The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).

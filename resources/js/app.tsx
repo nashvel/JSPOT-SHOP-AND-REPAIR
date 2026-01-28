@@ -1,24 +1,25 @@
-import './bootstrap';
 import '../css/app.css';
+import './bootstrap';
 
-import { createRoot } from 'react-dom/client';
 import { createInertiaApp } from '@inertiajs/react';
+import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
+import { createRoot } from 'react-dom/client';
 
-const appName = import.meta.env.VITE_APP_NAME || 'Advanced POS';
-
-const pages = import.meta.glob('./Pages/**/*.tsx', { eager: true });
+const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
 createInertiaApp({
     title: (title) => `${title} - ${appName}`,
-    resolve: (name) => {
-        const page = pages[`./Pages/${name}.tsx`] as any;
-        return page.default;
-    },
+    resolve: (name) =>
+        resolvePageComponent(
+            `./Pages/${name}.tsx`,
+            import.meta.glob('./Pages/**/*.tsx'),
+        ),
     setup({ el, App, props }) {
         const root = createRoot(el);
+
         root.render(<App {...props} />);
     },
     progress: {
-        color: '#4F46E5',
+        color: '#4B5563',
     },
 });

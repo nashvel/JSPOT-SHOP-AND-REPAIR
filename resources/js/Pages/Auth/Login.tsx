@@ -1,58 +1,110 @@
-import React, { FormEvent, useState } from 'react';
-import { router } from '@inertiajs/react';
+import Checkbox from '@/Components/Checkbox';
+import InputError from '@/Components/InputError';
+import InputLabel from '@/Components/InputLabel';
+import PrimaryButton from '@/Components/PrimaryButton';
+import TextInput from '@/Components/TextInput';
+import GuestLayout from '@/Layouts/GuestLayout';
+import { Head, Link, useForm } from '@inertiajs/react';
+import { FormEventHandler } from 'react';
 
-export default function Login({ errors = {} }: any) {
-  const [form, setForm] = useState({ email: '', password: '', remember: false });
-  const [processing, setProcessing] = useState(false);
+export default function Login({
+    status,
+    canResetPassword,
+}: {
+    status?: string;
+    canResetPassword: boolean;
+}) {
+    const { data, setData, post, processing, errors, reset } = useForm({
+        email: '',
+        password: '',
+        remember: false as boolean,
+    });
 
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
-    setProcessing(true);
-    router.post('/login', form, { onFinish: () => setProcessing(false) });
-  };
+    const submit: FormEventHandler = (e) => {
+        e.preventDefault();
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">Advanced POS System</h2>
-          <p className="mt-2 text-center text-sm text-gray-600">Sign in to your account</p>
-        </div>
-        <form className="mt-8 space-y-6" onSubmit={submit}>
-          <div className="rounded-md shadow-sm -space-y-px">
-            <input
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              type="email"
-              required
-              className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-              placeholder="Email address"
-            />
-            <input
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-              type="password"
-              required
-              className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-              placeholder="Password"
-            />
-          </div>
+        post(route('login'), {
+            onFinish: () => reset('password'),
+        });
+    };
 
-          {errors.email && <div className="text-red-600 text-sm">{errors.email}</div>}
+    return (
+        <GuestLayout>
+            <Head title="Log in" />
 
-          <button
-            type="submit"
-            disabled={processing}
-            className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50"
-          >
-            Sign in
-          </button>
+            {status && (
+                <div className="mb-4 text-sm font-medium text-green-600">
+                    {status}
+                </div>
+            )}
 
-          <div className="text-center text-sm text-gray-600">
-            <p className="font-semibold">Demo: dev@motorshop.com / password</p>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
+            <form onSubmit={submit}>
+                <div>
+                    <InputLabel htmlFor="email" value="Email" />
+
+                    <TextInput
+                        id="email"
+                        type="email"
+                        name="email"
+                        value={data.email}
+                        className="mt-1 block w-full"
+                        autoComplete="username"
+                        isFocused={true}
+                        onChange={(e) => setData('email', e.target.value)}
+                    />
+
+                    <InputError message={errors.email} className="mt-2" />
+                </div>
+
+                <div className="mt-4">
+                    <InputLabel htmlFor="password" value="Password" />
+
+                    <TextInput
+                        id="password"
+                        type="password"
+                        name="password"
+                        value={data.password}
+                        className="mt-1 block w-full"
+                        autoComplete="current-password"
+                        onChange={(e) => setData('password', e.target.value)}
+                    />
+
+                    <InputError message={errors.password} className="mt-2" />
+                </div>
+
+                <div className="mt-4 block">
+                    <label className="flex items-center">
+                        <Checkbox
+                            name="remember"
+                            checked={data.remember}
+                            onChange={(e) =>
+                                setData(
+                                    'remember',
+                                    (e.target.checked || false) as false,
+                                )
+                            }
+                        />
+                        <span className="ms-2 text-sm text-gray-600">
+                            Remember me
+                        </span>
+                    </label>
+                </div>
+
+                <div className="mt-4 flex items-center justify-end">
+                    {canResetPassword && (
+                        <Link
+                            href={route('password.request')}
+                            className="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                        >
+                            Forgot your password?
+                        </Link>
+                    )}
+
+                    <PrimaryButton className="ms-4" disabled={processing}>
+                        Log in
+                    </PrimaryButton>
+                </div>
+            </form>
+        </GuestLayout>
+    );
 }

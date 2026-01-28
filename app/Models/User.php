@@ -6,14 +6,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Spatie\Permission\Traits\HasRoles;
-use Laravel\Sanctum\HasApiTokens;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, HasRoles, HasApiTokens;
+    use HasFactory, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -24,9 +21,9 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'role',
         'branch_id',
-        'is_active',
-        'last_login_at',
+        'can_impersonate',
     ];
 
     /**
@@ -49,12 +46,16 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
-            'is_active' => 'boolean',
-            'last_login_at' => 'datetime',
+            'can_impersonate' => 'boolean',
         ];
     }
 
-    public function branch(): BelongsTo
+    public function menus()
+    {
+        return $this->belongsToMany(Menu::class, 'menu_user')->orderBy('order');
+    }
+
+    public function branch()
     {
         return $this->belongsTo(Branch::class);
     }

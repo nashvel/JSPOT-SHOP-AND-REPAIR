@@ -2,37 +2,36 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Branch extends Model
 {
-    use SoftDeletes;
+    use HasFactory;
 
-    protected $fillable = [
-        'name', 'code', 'address', 'phone', 'email', 
-        'is_main', 'is_active', 'settings'
-    ];
+    protected $fillable = ['name', 'address', 'contact_number', 'is_main', 'latitude', 'longitude'];
 
     protected $casts = [
         'is_main' => 'boolean',
-        'is_active' => 'boolean',
-        'settings' => 'array',
     ];
 
-    public function users(): HasMany
+    public function users()
     {
         return $this->hasMany(User::class);
     }
 
-    public function orders(): HasMany
+    public function products()
     {
-        return $this->hasMany(Order::class);
+        return $this->belongsToMany(Product::class)->withPivot('stock_quantity');
     }
 
-    public function inventory(): HasMany
+    public function jobOrders()
     {
-        return $this->hasMany(BranchInventory::class);
+        return $this->hasMany(JobOrder::class);
+    }
+
+    public function reservations()
+    {
+        return $this->hasMany(Reservation::class);
     }
 }
