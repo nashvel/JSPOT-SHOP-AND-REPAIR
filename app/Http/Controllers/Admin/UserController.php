@@ -3,91 +3,80 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Role;
+use App\Models\User;
+use App\Models\Menu;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
 
 class UserController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
-        $users = \App\Models\User::all();
-        return \Inertia\Inertia::render('Admin/Users/Index', [
+        $users = User::with('role')->get();
+        return Inertia::render('Admin/Users/Index', [
             'users' => $users,
-            'availableMenus' => \App\Models\Menu::all()
+            'availableMenus' => Menu::all(),
+            'roles' => Role::all(),
         ]);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
-        return \Inertia\Inertia::render('Admin/Users/Create', [
-            'availableMenus' => \App\Models\Menu::all()
+        return Inertia::render('Admin/Users/Create', [
+            'availableMenus' => Menu::all(),
+            'roles' => Role::all(),
         ]);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8',
-            'role' => 'required|string|in:admin,manager,cashier,mechanic',
+            'role_id' => 'required|exists:roles,id',
             'menus' => 'array',
             'menus.*' => 'exists:menus,id',
         ]);
 
-        $user = \App\Models\User::create([
+        $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => bcrypt($validated['password']),
-            'role' => $validated['role'],
+            'role_id' => $validated['role_id'],
         ]);
 
         if (isset($validated['menus'])) {
             $user->menus()->sync($validated['menus']);
         }
 
-        return redirect()->route('admin.users.index');
+        return redirect()->route('admin.users.index')->with('success', 'User created successfully!');
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(string $id)
     {
         //
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
     public function edit(string $id)
     {
-        $user = \App\Models\User::with('menus')->findOrFail($id);
-        return \Inertia\Inertia::render('Admin/Users/Edit', [
+        $user = User::with(['menus', 'role'])->findOrFail($id);
+        return Inertia::render('Admin/Users/Edit', [
             'user' => $user,
-            'availableMenus' => \App\Models\Menu::all()
+            'availableMenus' => Menu::all(),
+            'roles' => Role::all(),
         ]);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, string $id)
     {
-        $user = \App\Models\User::findOrFail($id);
+        $user = User::findOrFail($id);
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
-            'role' => 'required|string|in:admin,manager,cashier,mechanic',
+            'role_id' => 'required|exists:roles,id',
             'menus' => 'array',
             'menus.*' => 'exists:menus,id',
         ]);
@@ -95,26 +84,22 @@ class UserController extends Controller
         $user->update([
             'name' => $validated['name'],
             'email' => $validated['email'],
-            'role' => $validated['role'],
+            'role_id' => $validated['role_id'],
         ]);
 
         if ($request->filled('password')) {
             $user->update(['password' => bcrypt($request->password)]);
         }
 
-        if (isset($validated['menus'])) {
-            $user->menus()->sync($validated['menus']);
-        }
+        // Sync menus - always sync even if empty array to allow removing all menus
+        $user->menus()->sync($validated['menus'] ?? []);
 
-        return redirect()->route('admin.users.index');
+        return redirect()->route('admin.users.index')->with('success', 'User updated successfully!');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(string $id)
     {
-        \App\Models\User::findOrFail($id)->delete();
-        return redirect()->route('admin.users.index');
+        User::findOrFail($id)->delete();
+        return redirect()->route('admin.users.index')->with('success', 'User deleted successfully!');
     }
 }

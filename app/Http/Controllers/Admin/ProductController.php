@@ -3,60 +3,69 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Product;
+use App\Models\Branch;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
 
 class ProductController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $products = \App\Models\Product::with(['branches'])
-            ->when(request('search'), function($query, $search) {
+        $products = Product::with(['branches'])
+            ->when($request->search, function ($query, $search) {
                 $query->where('name', 'like', "%{$search}%")
-                      ->orWhere('sku', 'like', "%{$search}%");
+                    ->orWhere('sku', 'like', "%{$search}%");
+            })
+            ->when($request->type, function ($query, $type) {
+                $query->where('type', $type);
             })
             ->paginate(10)
             ->withQueryString();
 
-        return \Inertia\Inertia::render('Admin/Products/Index', [
+        return Inertia::render('Admin/Products/Index', [
             'products' => $products,
-            'filters' => request()->only(['search']),
+            'filters' => $request->only(['search', 'type']),
         ]);
     }
 
-    public function store(\Illuminate\Http\Request $request)
+    public function store(Request $request)
     {
         $validated = $request->validate([
+            'type' => 'required|in:product,service',
             'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
             'sku' => 'nullable|string|unique:products',
             'price' => 'required|numeric|min:0',
-            'branches' => 'array', // Expects logic to assign stock
         ]);
 
-        $product = \App\Models\Product::create($validated);
+        $product = Product::create($validated);
 
-        // Assign to all branches with 0 stock by default if not specified
-        $branchIds = \App\Models\Branch::pluck('id');
-        $product->branches()->attach($branchIds, ['stock_quantity' => 0]);
+        // Only assign to branches with stock if it's a product (not service)
+        if ($validated['type'] === 'product') {
+            $branchIds = Branch::pluck('id');
+            $product->branches()->attach($branchIds, ['stock_quantity' => 0]);
+        }
 
-        return redirect()->back()->with('success', 'Product created successfully.');
+        $typeName = $validated['type'] === 'product' ? 'Product' : 'Service';
+        return redirect()->back()->with('success', "{$typeName} created successfully.");
     }
 
-    public function update(\Illuminate\Http\Request $request, \App\Models\Product $product)
+    public function update(Request $request, Product $product)
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
             'sku' => 'nullable|string|unique:products,sku,' . $product->id,
             'price' => 'required|numeric|min:0',
         ]);
 
+        // Don't allow changing type after creation
         $product->update($validated);
 
-        return redirect()->back()->with('success', 'Product updated successfully.');
+        $typeName = $product->type === 'product' ? 'Product' : 'Service';
+        return redirect()->back()->with('success', "{$typeName} updated successfully.");
     }
 
-    public function destroy(\App\Models\Product $product)
-    {
-        $product->delete();
-        return redirect()->back()->with('success', 'Product deleted successfully.');
-    }
+    // Note: destroy is removed from here - products can only be deleted from Inventory Management
 }

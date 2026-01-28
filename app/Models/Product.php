@@ -9,10 +9,20 @@ class Product extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'description', 'sku', 'barcode', 'price', 'image'];
+    protected $fillable = ['type', 'name', 'description', 'sku', 'barcode', 'price', 'image'];
 
     public function branches()
     {
         return $this->belongsToMany(Branch::class)->withPivot('stock_quantity');
+    }
+
+    public function isProduct(): bool
+    {
+        return $this->type === 'product';
+    }
+
+    public function isService(): bool
+    {
+        return $this->type === 'service';
     }
 }

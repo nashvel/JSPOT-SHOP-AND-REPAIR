@@ -7,12 +7,24 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm } from '@inertiajs/react';
 import { FormEventHandler } from 'react';
 
-export default function Edit({ user, availableMenus }: { user: any, availableMenus: any[] }) {
+interface Role {
+    id: number;
+    name: string;
+    display_name: string;
+}
+
+interface Props {
+    user: any;
+    availableMenus: any[];
+    roles: Role[];
+}
+
+export default function Edit({ user, availableMenus, roles }: Props) {
     const { data, setData, put, processing, errors } = useForm({
         name: user.name,
         email: user.email,
         password: '',
-        role: user.role,
+        role_id: user.role_id || (roles[0]?.id || 0),
         menus: user.menus.map((m: any) => m.id) as number[],
     });
 
@@ -89,27 +101,25 @@ export default function Edit({ user, availableMenus }: { user: any, availableMen
                                 </div>
 
                                 <div className="mt-4">
-                                    <InputLabel htmlFor="role" value="Role" />
+                                    <InputLabel htmlFor="role_id" value="Role" />
 
                                     <select
-                                        id="role"
-                                        name="role"
-                                        value={data.role}
+                                        id="role_id"
+                                        name="role_id"
+                                        value={data.role_id}
                                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                                         onChange={(e) =>
-                                            setData('role', e.target.value)
+                                            setData('role_id', parseInt(e.target.value))
                                         }
                                         required
                                     >
-                                        <option value="user">User</option>
-                                        <option value="admin">System Admin</option>
-                                        <option value="director">QUAMC Director</option>
-                                        <option value="overall_ic">Overall In-Charge</option>
-                                        <option value="area_ic">Area In-Charge</option>
+                                        {roles.map((role) => (
+                                            <option key={role.id} value={role.id}>{role.display_name}</option>
+                                        ))}
                                     </select>
 
                                     <InputError
-                                        message={errors.role}
+                                        message={errors.role_id}
                                         className="mt-2"
                                     />
                                 </div>

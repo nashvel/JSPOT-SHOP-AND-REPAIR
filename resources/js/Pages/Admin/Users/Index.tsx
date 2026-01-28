@@ -1,8 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link, useForm } from '@inertiajs/react';
-import { Plus, Trash2, Edit2 } from 'lucide-react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
+import { Plus, Trash2, Edit2, Shield } from 'lucide-react';
 import { useState } from 'react';
-import { User } from '@/types';
 import Modal from '@/Components/Modal';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
@@ -11,18 +10,40 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import InputError from '@/Components/InputError';
 import Checkbox from '@/Components/Checkbox';
 
-export default function Index({ users, availableMenus }: { users: User[], availableMenus: any[] }) {
+interface Role {
+    id: number;
+    name: string;
+    display_name: string;
+}
+
+interface User {
+    id: number;
+    name: string;
+    email: string;
+    role_id: number;
+    role?: Role;
+}
+
+interface Props {
+    users: User[];
+    availableMenus: any[];
+    roles: Role[];
+}
+
+export default function Index({ users, availableMenus, roles }: Props) {
+    const { flash } = usePage().props as any;
     const [modal, setModal] = useState(false);
     const { data, setData, post, delete: destroy, processing, reset, errors } = useForm({
         name: '',
         email: '',
         password: '',
-        role: 'user',
+        role_id: roles[0]?.id || 0,
         menus: [] as number[],
     });
 
     const openModal = () => {
         reset();
+        setData('role_id', roles[0]?.id || 0);
         setModal(true);
     };
 
@@ -58,19 +79,35 @@ export default function Index({ users, availableMenus }: { users: User[], availa
                     <div className="overflow-hidden bg-white shadow-sm sm:rounded-lg">
                         <div className="p-6 text-gray-900">
 
+                            {/* Success Message */}
+                            {flash?.success && (
+                                <div className="mb-4 rounded-md bg-green-50 p-4 border border-green-200">
+                                    <p className="text-sm font-medium text-green-800">{flash.success}</p>
+                                </div>
+                            )}
+
                             {/* Header & Actions */}
                             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
                                 <div>
                                     <h3 className="text-lg font-bold text-gray-900">System Users</h3>
                                     <p className="text-sm text-gray-500">Manage access and permissions for your staff.</p>
                                 </div>
-                                <button
-                                    onClick={openModal}
-                                    className="inline-flex items-center gap-2 rounded-md bg-gray-800 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-white transition duration-150 ease-in-out hover:bg-gray-700 focus:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 active:bg-gray-900"
-                                >
-                                    <Plus className="h-4 w-4" />
-                                    Add User
-                                </button>
+                                <div className="flex gap-2">
+                                    <Link
+                                        href={route('admin.roles.index')}
+                                        className="inline-flex items-center gap-2 rounded-md bg-gray-100 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-gray-700 transition hover:bg-gray-200"
+                                    >
+                                        <Shield className="h-4 w-4" />
+                                        Manage Roles
+                                    </Link>
+                                    <button
+                                        onClick={openModal}
+                                        className="inline-flex items-center gap-2 rounded-md bg-gray-800 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-white transition duration-150 ease-in-out hover:bg-gray-700 focus:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 active:bg-gray-900"
+                                    >
+                                        <Plus className="h-4 w-4" />
+                                        Add User
+                                    </button>
+                                </div>
                             </div>
 
                             <table className="min-w-full divide-y divide-gray-200">
@@ -87,13 +124,9 @@ export default function Index({ users, availableMenus }: { users: User[], availa
                                         <tr key={user.id} className="hover:bg-gray-50 transition-colors">
                                             <td className="whitespace-nowrap px-6 py-4 font-medium text-gray-900">{user.name}</td>
                                             <td className="whitespace-nowrap px-6 py-4 text-gray-500">{user.email}</td>
-                                            <td className="whitespace-nowrap px-6 py-4 capitalize">
-                                                <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${user.role === 'admin' ? 'bg-purple-100 text-purple-800' :
-                                                        user.role === 'manager' ? 'bg-blue-100 text-blue-800' :
-                                                            user.role === 'cashier' ? 'bg-green-100 text-green-800' :
-                                                                'bg-orange-100 text-orange-800'
-                                                    }`}>
-                                                    {user.role}
+                                            <td className="whitespace-nowrap px-6 py-4">
+                                                <span className="inline-flex items-center rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-medium text-indigo-800">
+                                                    {user.role?.display_name || 'No Role'}
                                                 </span>
                                             </td>
                                             <td className="whitespace-nowrap px-6 py-4 text-right">
@@ -144,21 +177,19 @@ export default function Index({ users, availableMenus }: { users: User[], availa
                         </div>
 
                         <div>
-                            <InputLabel htmlFor="role" value="Role" />
+                            <InputLabel htmlFor="role_id" value="Role" />
                             <select
-                                id="role"
-                                value={data.role}
+                                id="role_id"
+                                value={data.role_id}
                                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                onChange={(e) => setData('role', e.target.value)}
+                                onChange={(e) => setData('role_id', parseInt(e.target.value))}
                                 required
                             >
-                                <option value="user">User</option>
-                                <option value="admin">System Admin</option>
-                                <option value="manager">Branch Manager</option>
-                                <option value="cashier">Cashier Staff</option>
-                                <option value="mechanic">Head Mechanic</option>
+                                {roles.map((role) => (
+                                    <option key={role.id} value={role.id}>{role.display_name}</option>
+                                ))}
                             </select>
-                            <InputError message={errors.role} className="mt-2" />
+                            <InputError message={errors.role_id} className="mt-2" />
                         </div>
 
                         <div>
