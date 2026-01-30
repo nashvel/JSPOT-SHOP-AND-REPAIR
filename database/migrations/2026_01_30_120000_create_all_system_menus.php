@@ -95,7 +95,11 @@ return new class extends Migration {
         // ============================================
         // AUTO-ASSIGN TO SYSTEM ADMIN
         // ============================================
-        $adminUsers = User::whereNull('branch_id')->get();
+        $adminUsers = User::whereNull('branch_id')
+            ->whereHas('role', function($q) {
+                $q->where('name', '!=', 'super_admin');
+            })
+            ->get();
 
         // System Admin menus (includes POS for viewing/testing, no branch restrictions)
         $adminMenuIds = [

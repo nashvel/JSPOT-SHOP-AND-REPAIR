@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router } from '@inertiajs/react';
-import { CheckCircle, XCircle, Clock, Package, Filter } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, Package, ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 
 interface SaleReturn {
@@ -44,6 +44,7 @@ interface Props {
 
 export default function Index({ returns, branches, filters, userBranchId }: Props) {
     const [processing, setProcessing] = useState<number | null>(null);
+    const [showBranchDropdown, setShowBranchDropdown] = useState(false);
 
     const formatPrice = (price: number) => `₱${parseFloat(String(price)).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
     const formatDate = (date: string) => new Date(date).toLocaleString('en-PH', {
@@ -72,12 +73,17 @@ export default function Index({ returns, branches, filters, userBranchId }: Prop
         }, { preserveState: true });
     };
 
-    const filterByBranch = (branchId: string) => {
+    const filterByBranch = (branchId: number | null) => {
         router.get(route('admin.returns.index'), { 
             branch_id: branchId || undefined,
             status: filters.status 
         }, { preserveState: true });
+        setShowBranchDropdown(false);
     };
+
+    const selectedBranchName = filters.branch_id 
+        ? branches.find(b => b.id === filters.branch_id)?.name || 'All Branches'
+        : 'All Branches';
 
     const StatusBadge = ({ status }: { status: string }) => {
         const config: Record<string, { icon: React.ReactNode; class: string }> = {
@@ -111,18 +117,41 @@ export default function Index({ returns, branches, filters, userBranchId }: Prop
                     <div className="flex flex-wrap gap-2 mb-6">
                         {/* Branch Filter (System Admin Only) */}
                         {!userBranchId && branches.length > 0 && (
-                            <select
-                                value={filters.branch_id || ''}
-                                onChange={(e) => filterByBranch(e.target.value)}
-                                className="px-4 py-2 rounded-lg border-gray-200 bg-white focus:ring-2 focus:ring-indigo-500 font-medium"
-                            >
-                                <option value="">All Branches</option>
-                                {branches.map(branch => (
-                                    <option key={branch.id} value={branch.id}>
-                                        {branch.name}
-                                    </option>
-                                ))}
-                            </select>
+                            <div className="relative">
+                                <button
+                                    onClick={() => setShowBranchDropdown(!showBranchDropdown)}
+                                    className="px-4 py-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 font-medium flex items-center gap-2 min-w-[180px] justify-between"
+                                >
+                                    <span>{selectedBranchName}</span>
+                                    <ChevronDown className={`h-4 w-4 transition-transform ${showBranchDropdown ? 'rotate-180' : ''}`} />
+                                </button>
+                                
+                                {showBranchDropdown && (
+                                    <>
+                                        <div 
+                                            className="fixed inset-0 z-10" 
+                                            onClick={() => setShowBranchDropdown(false)}
+                                        />
+                                        <div className="absolute top-full left-0 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg z-20 max-h-60 overflow-y-auto">
+                                            <button
+                                                onClick={() => filterByBranch(null)}
+                                                className={`w-full text-left px-4 py-2 hover:bg-gray-50 ${!filters.branch_id ? 'bg-indigo-50 text-indigo-600 font-medium' : ''}`}
+                                            >
+                                                All Branches
+                                            </button>
+                                            {branches.map(branch => (
+                                                <button
+                                                    key={branch.id}
+                                                    onClick={() => filterByBranch(branch.id)}
+                                                    className={`w-full text-left px-4 py-2 hover:bg-gray-50 ${filters.branch_id === branch.id ? 'bg-indigo-50 text-indigo-600 font-medium' : ''}`}
+                                                >
+                                                    {branch.name}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </>
+                                )}
+                            </div>
                         )}
 
                         {/* Status Filters */}

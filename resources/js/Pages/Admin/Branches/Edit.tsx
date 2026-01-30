@@ -70,7 +70,6 @@ export default function Edit({ branch, availableMenus, roles }: Props) {
         name: '',
         email: '',
         password: '',
-        role_id: roles[0]?.id || 0,
     });
 
     // Form for updating staff permissions
@@ -130,7 +129,7 @@ export default function Edit({ branch, availableMenus, roles }: Props) {
         e.preventDefault();
         if (!selectedStaff) return;
 
-        permissionsForm.post(route('admin.branches.staff.menus.menus.update', [branch.id, selectedStaff.id]), {
+        permissionsForm.post(route('admin.branches.staff.menus.update', [branch.id, selectedStaff.id]), {
             onSuccess: () => {
                 setPermissionsModal(false);
                 setSelectedStaff(null);
@@ -402,15 +401,6 @@ export default function Edit({ branch, availableMenus, roles }: Props) {
                                             className="w-full text-sm rounded-lg border-gray-300"
                                             required
                                         />
-                                        <select
-                                            value={staffForm.data.role_id}
-                                            onChange={(e) => staffForm.setData('role_id', parseInt(e.target.value))}
-                                            className="w-full text-sm rounded-lg border-gray-300"
-                                        >
-                                            {roles.map(role => (
-                                                <option key={role.id} value={role.id}>{role.display_name}</option>
-                                            ))}
-                                        </select>
                                         <div className="flex gap-2">
                                             <button
                                                 type="button"
@@ -424,7 +414,7 @@ export default function Edit({ branch, availableMenus, roles }: Props) {
                                                 disabled={staffForm.processing}
                                                 className="flex-1 px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700"
                                             >
-                                                Add
+                                                Add Staff
                                             </button>
                                         </div>
                                     </form>

@@ -12,36 +12,8 @@ class RoleSeeder extends Seeder
      */
     public function run(): void
     {
-        // Admin
-        \App\Models\User::factory()->create([
-            'name' => 'System Admin',
-            'email' => 'admin@example.com',
-            'password' => bcrypt('password'),
-            'role' => 'admin',
-        ]);
-
-        // Branch Manager (was Director)
-        \App\Models\User::factory()->create([
-            'name' => 'Branch Manager',
-            'email' => 'manager@example.com',
-            'password' => bcrypt('password'),
-            'role' => 'manager',
-        ]);
-
-        // Cashier (was Overall In-Charge)
-        \App\Models\User::factory()->create([
-            'name' => 'Cashier Staff',
-            'email' => 'cashier@example.com',
-            'password' => bcrypt('password'),
-            'role' => 'cashier',
-        ]);
-
-        // Mechanic (was Area In-Charge)
-        \App\Models\User::factory()->create([
-            'name' => 'Head Mechanic',
-            'email' => 'mechanic@example.com',
-            'password' => bcrypt('password'),
-            'role' => 'mechanic',
-        ]);
+        // Roles are now seeded in the migration file
+        // This seeder is kept for backwards compatibility
+        $this->command->info('✓ Roles are seeded via migration');
     }
 }

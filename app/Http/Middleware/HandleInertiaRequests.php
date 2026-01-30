@@ -43,6 +43,9 @@ class HandleInertiaRequests extends Middleware
         // Determine which menus to load and active branch
         $menus = [];
         if ($user) {
+            // Load role relationship for all users
+            $user->load('role');
+            
             // Check if user is system admin (no branch_id)
             $isSystemAdmin = !$user->branch_id;
 
@@ -80,7 +83,7 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'auth' => [
-                'user' => $user ? $user->load('role') : null,
+                'user' => $user,
                 'menus' => $menus,
                 'isSystemAdmin' => $isSystemAdmin,
             ],

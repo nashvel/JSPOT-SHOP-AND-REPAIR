@@ -21,12 +21,13 @@ return new class extends Migration {
 
         // Seed default roles
         DB::table('roles')->insert([
+            ['name' => 'super_admin', 'display_name' => 'Super Admin', 'description' => 'Highest level access - can create admins', 'created_at' => now(), 'updated_at' => now()],
             ['name' => 'admin', 'display_name' => 'Admin', 'description' => 'Full system access', 'created_at' => now(), 'updated_at' => now()],
-            ['name' => 'sub_admin', 'display_name' => 'Sub Admin', 'description' => 'Limited admin access', 'created_at' => now(), 'updated_at' => now()],
-            ['name' => 'cashier', 'display_name' => 'Cashier', 'description' => 'POS and sales access', 'created_at' => now(), 'updated_at' => now()],
+            ['name' => 'manager', 'display_name' => 'Manager', 'description' => 'Branch manager with access to branch operations', 'created_at' => now(), 'updated_at' => now()],
+            ['name' => 'staff', 'display_name' => 'Staff', 'description' => 'Branch staff with limited access', 'created_at' => now(), 'updated_at' => now()],
         ]);
 
-        // Add role_id to users table (nullable for existing users)
+        // Add role_id to users table (branch_id and can_impersonate already added by POS migration)
         Schema::table('users', function (Blueprint $table) {
             $table->foreignId('role_id')->nullable()->after('role')->constrained()->nullOnDelete();
         });
@@ -36,6 +37,11 @@ return new class extends Migration {
         if ($adminRole) {
             DB::table('users')->where('role', 'admin')->update(['role_id' => $adminRole->id]);
         }
+        
+        // Drop the old role string column
+        Schema::table('users', function (Blueprint $table) {
+            $table->dropColumn('role');
+        });
     }
 
     /**

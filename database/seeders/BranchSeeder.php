@@ -11,12 +11,15 @@ class BranchSeeder extends Seeder
 {
     public function run(): void
     {
+        // Get the manager role
+        $managerRole = \App\Models\Role::where('name', 'manager')->first();
+        
         // Create user for Main Branch
         $mainUser = User::create([
             'name' => 'Main Branch Manager',
             'email' => 'main.branch@jspot.com',
             'password' => Hash::make('password'),
-            'role' => 'branch_manager',
+            'role_id' => $managerRole->id,
         ]);
 
         Branch::create([
@@ -36,7 +39,7 @@ class BranchSeeder extends Seeder
             'name' => 'Downtown Branch Manager',
             'email' => 'downtown.branch@jspot.com',
             'password' => Hash::make('password'),
-            'role' => 'branch_manager',
+            'role_id' => $managerRole->id,
         ]);
 
         Branch::create([
@@ -56,7 +59,7 @@ class BranchSeeder extends Seeder
             'name' => 'Uptown Branch Manager',
             'email' => 'uptown.branch@jspot.com',
             'password' => Hash::make('password'),
-            'role' => 'branch_manager',
+            'role_id' => $managerRole->id,
         ]);
 
         Branch::create([

@@ -6,6 +6,7 @@ use Illuminate\Database\Seeder;
 use App\Models\Product;
 use App\Models\Branch;
 use App\Models\ProductSection;
+use App\Models\Category;
 
 class ProductSeeder extends Seeder
 {
@@ -211,7 +212,10 @@ class ProductSeeder extends Seeder
         }
 
         foreach ($products as $index => $prod) {
-            $product = Product::create($prod);
+            $product = Product::updateOrCreate(
+                ['sku' => $prod['sku']],
+                $prod
+            );
             
             // Round-robin assignment
             $targetBranchIndex = $index % $branches->count();
@@ -277,6 +281,8 @@ class ProductSeeder extends Seeder
             }
         }
 
-        $this->command->info('Created ' . count($products) . ' products and ' . count($services) . ' services.');
+        $productCount = Product::where('type', 'product')->count();
+        $serviceCount = Product::where('type', 'service')->count();
+        $this->command->info("Created {$productCount} products and {$serviceCount} services.");
     }
 }

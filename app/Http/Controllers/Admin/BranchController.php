@@ -77,12 +77,15 @@ class BranchController extends Controller
             $branch->menus()->sync($validated['menus']);
         }
 
+        // Get the manager role
+        $managerRole = Role::where('name', 'manager')->first();
+        
         // Create a user account for the branch so they can log in
         User::create([
             'name' => $validated['name'] . ' (Branch Account)',
             'email' => $validated['email'],
             'password' => bcrypt($validated['password']),
-            'role' => 'manager', // Use string role field
+            'role_id' => $managerRole ? $managerRole->id : null,
             'branch_id' => $branch->id,
         ]);
 
@@ -162,14 +165,21 @@ class BranchController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:8',
-            'role_id' => 'required|exists:roles,id',
         ]);
+
+        // Get the staff role
+        $staffRole = Role::where('name', 'staff')->first();
+        
+        if (!$staffRole) {
+            return redirect()->back()
+                ->with('error', 'Staff role not found in the system.');
+        }
 
         User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => bcrypt($validated['password']),
-            'role_id' => $validated['role_id'],
+            'role_id' => $staffRole->id, // Automatically set role to staff
             'branch_id' => $branch->id,
         ]);
 

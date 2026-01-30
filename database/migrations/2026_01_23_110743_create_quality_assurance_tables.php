@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Add role column to users table
+        // Add role column to users table (will be replaced by role_id later)
         Schema::table('users', function (Blueprint $table) {
             $table->string('role')->default('user')->after('email'); // admin, director, overall_ic, area_ic
         });

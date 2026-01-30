@@ -21,7 +21,6 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'role',
         'role_id',
         'branch_id',
         'can_impersonate',

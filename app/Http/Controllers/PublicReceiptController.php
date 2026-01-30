@@ -13,8 +13,14 @@ class PublicReceiptController extends Controller
             ->with(['branch', 'user', 'items'])
             ->firstOrFail();
 
+        // Get job order if exists (when services were purchased)
+        $jobOrder = \App\Models\JobOrder::where('sale_id', $sale->id)
+            ->with(['mechanic', 'parts.product'])
+            ->first();
+
         return Inertia::render('Public/Receipt', [
             'sale' => $sale,
+            'jobOrder' => $jobOrder,
         ]);
     }
 }

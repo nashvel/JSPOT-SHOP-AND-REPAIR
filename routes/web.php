@@ -96,6 +96,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('admin/analytics/sales', [\App\Http\Controllers\Admin\AnalyticsController::class, 'sales'])->name('admin.analytics.sales');
     Route::get('admin/analytics/job-orders', [\App\Http\Controllers\Admin\AnalyticsController::class, 'jobOrders'])->name('admin.analytics.job-orders');
 
+    // Super Admin Panel (only accessible by super admins)
+    Route::get('admin/super-admin', [\App\Http\Controllers\Admin\SuperAdminController::class, 'index'])->name('admin.super-admin.index');
+    Route::post('admin/super-admin', [\App\Http\Controllers\Admin\SuperAdminController::class, 'store'])->name('admin.super-admin.store');
+    Route::put('admin/super-admin/{user}', [\App\Http\Controllers\Admin\SuperAdminController::class, 'update'])->name('admin.super-admin.update');
+    Route::delete('admin/super-admin/{user}', [\App\Http\Controllers\Admin\SuperAdminController::class, 'destroy'])->name('admin.super-admin.destroy');
+
     // Impersonation Routes
     Route::post('admin/impersonate/{branch}', [\App\Http\Controllers\Admin\ImpersonationController::class, 'impersonate'])->name('admin.impersonate');
     Route::post('admin/stop-impersonating', [\App\Http\Controllers\Admin\ImpersonationController::class, 'stopImpersonating'])->name('admin.stop-impersonating');

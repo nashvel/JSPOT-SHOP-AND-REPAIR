@@ -82,12 +82,27 @@ class ReturnController extends Controller
                 'processed_at' => now(),
             ]);
 
-            // Restore stock
+            // Get sale and sale item
             $sale = $return->sale;
             $saleItem = $return->saleItem;
 
-            $saleItem->product->branches()->updateExistingPivot($sale->branch_id, [
-                'stock_quantity' => DB::raw("stock_quantity + {$return->quantity}"),
+            // Calculate return amount
+            $returnAmount = $saleItem->unit_price * $return->quantity;
+
+            // Restore stock (only for products, not services)
+            if ($saleItem->product_type === 'product') {
+                $saleItem->product->branches()->updateExistingPivot($sale->branch_id, [
+                    'stock_quantity' => DB::raw("stock_quantity + {$return->quantity}"),
+                ]);
+            }
+
+            // Deduct return amount from sale totals
+            $newSubtotal = max(0, $sale->subtotal - $returnAmount);
+            $newTotal = max(0, $sale->total - $returnAmount);
+            
+            $sale->update([
+                'subtotal' => $newSubtotal,
+                'total' => $newTotal,
             ]);
 
             // Update sale status
@@ -103,7 +118,7 @@ class ReturnController extends Controller
             }
         });
 
-        return back()->with('success', 'Return approved successfully.');
+        return back()->with('success', 'Return approved successfully. Sale total has been adjusted.');
     }
 
     public function reject(SalesReturn $return)

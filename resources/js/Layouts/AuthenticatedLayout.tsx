@@ -127,6 +127,27 @@ export default function Authenticated({
                             </div>
                         )
                     })}
+
+                    {/* Hardcoded Super Admin Panel - Only visible to Super Admin role */}
+                    {user.role?.name === 'super_admin' && (
+                        <div>
+                            <h3 className="mb-2 px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                ADMINISTRATION
+                            </h3>
+                            <div className="space-y-1">
+                                <Link
+                                    href={route('admin.super-admin.index')}
+                                    className={`flex items-center gap-3 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${route().current('admin.super-admin.*')
+                                        ? 'bg-gray-100 text-gray-900'
+                                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                                        }`}
+                                >
+                                    <Shield className="h-4 w-4" />
+                                    Super Admin Panel
+                                </Link>
+                            </div>
+                        </div>
+                    )}
                 </nav>
 
                 <div className="border-t border-gray-100 p-4">

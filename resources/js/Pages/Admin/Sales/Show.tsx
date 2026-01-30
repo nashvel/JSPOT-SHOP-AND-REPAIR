@@ -1,7 +1,8 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, Printer, QrCode, RotateCcw, Banknote, Smartphone, CreditCard, Copy, CheckCircle } from 'lucide-react';
+import { ArrowLeft, QrCode, RotateCcw, Banknote, Smartphone, CreditCard, Copy, CheckCircle } from 'lucide-react';
 import { useState } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 
 interface SaleItem {
     id: number;
@@ -250,6 +251,21 @@ export default function Show({ sale, receiptUrl }: Props) {
                                         <span className="text-gray-500">Subtotal</span>
                                         <span>{formatPrice(sale.subtotal)}</span>
                                     </div>
+                                    {sale.returns.some(r => r.status === 'approved') && (
+                                        <div className="flex justify-between text-red-600">
+                                            <span>Returns Deducted</span>
+                                            <span>
+                                                -{formatPrice(
+                                                    sale.returns
+                                                        .filter(r => r.status === 'approved')
+                                                        .reduce((sum, r) => {
+                                                            const item = sale.items.find(i => i.id === r.sale_item_id);
+                                                            return sum + (item ? item.unit_price * r.quantity : 0);
+                                                        }, 0)
+                                                )}
+                                            </span>
+                                        </div>
+                                    )}
                                     <div className="flex justify-between border-t pt-2 text-lg font-bold">
                                         <span>Total</span>
                                         <span className="text-indigo-600">{formatPrice(sale.total)}</span>
@@ -264,6 +280,26 @@ export default function Show({ sale, receiptUrl }: Props) {
                                             <span>{formatPrice(sale.change)}</span>
                                         </div>
                                     )}
+                                </div>
+                            </div>
+
+                            {/* QR Code */}
+                            <div className="bg-white rounded-xl shadow-sm p-6">
+                                <h3 className="font-semibold text-gray-900 mb-4 text-center">Customer Receipt</h3>
+                                <div className="flex flex-col items-center">
+                                    <div className="bg-white p-4 rounded-lg border-2 border-gray-200">
+                                        <QRCodeSVG 
+                                            value={receiptUrl} 
+                                            size={180}
+                                            level="H"
+                                        />
+                                    </div>
+                                    <p className="text-xs text-gray-500 mt-3 text-center">
+                                        Scan to view receipt & track order
+                                    </p>
+                                    <p className="text-xs text-gray-400 mt-1 font-mono">
+                                        {sale.sale_number}
+                                    </p>
                                 </div>
                             </div>
 

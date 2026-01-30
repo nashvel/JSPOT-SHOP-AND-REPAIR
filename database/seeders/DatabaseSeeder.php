@@ -18,14 +18,12 @@ class DatabaseSeeder extends Seeder
         $this->call([
             RoleSeeder::class,
             BranchSeeder::class,
-<<<<<<< HEAD
             ProductSectionSeeder::class,
-=======
             MechanicSeeder::class,
->>>>>>> 2cee6244ca02f90359eda9e7c5ad418126fbf427
             ProductSeeder::class,
             JobOrderSeeder::class,
             MenuSeeder::class,
+            SuperAdminSeeder::class, // Create super admin accounts
             SettingSeeder::class,
             SaleSeeder::class,
         ]);
