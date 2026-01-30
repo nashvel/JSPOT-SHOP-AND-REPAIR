@@ -79,6 +79,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('admin/branches/{branch}/staff', [\App\Http\Controllers\Admin\BranchController::class, 'addStaff'])->name('admin.branches.staff.add');
     Route::delete('admin/branches/{branch}/staff/{user}', [\App\Http\Controllers\Admin\BranchController::class, 'removeStaff'])->name('admin.branches.staff.remove');
     Route::post('admin/branches/{branch}/staff/{user}/menus', [\App\Http\Controllers\Admin\BranchController::class, 'updateStaffMenus'])->name('admin.branches.staff.menus.update');
+    Route::patch('admin/branches/{branch}/coordinates', [\App\Http\Controllers\Admin\BranchController::class, 'updateCoordinates'])->name('admin.branches.coordinates.update');
 
     // Mechanics Management
     Route::get('admin/mechanics', [\App\Http\Controllers\Admin\MechanicController::class, 'index'])->name('admin.mechanics.index');
@@ -101,10 +102,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('admin/super-admin', [\App\Http\Controllers\Admin\SuperAdminController::class, 'store'])->name('admin.super-admin.store');
     Route::put('admin/super-admin/{user}', [\App\Http\Controllers\Admin\SuperAdminController::class, 'update'])->name('admin.super-admin.update');
     Route::delete('admin/super-admin/{user}', [\App\Http\Controllers\Admin\SuperAdminController::class, 'destroy'])->name('admin.super-admin.destroy');
+    Route::post('admin/super-admin/{user}/menus', [\App\Http\Controllers\Admin\SuperAdminController::class, 'updateMenus'])->name('admin.super-admin.menus.update');
 
     // Impersonation Routes
     Route::post('admin/impersonate/{branch}', [\App\Http\Controllers\Admin\ImpersonationController::class, 'impersonate'])->name('admin.impersonate');
     Route::post('admin/stop-impersonating', [\App\Http\Controllers\Admin\ImpersonationController::class, 'stopImpersonating'])->name('admin.stop-impersonating');
+
+    // Attendance Management
+    Route::get('admin/attendance', [\App\Http\Controllers\Admin\AttendanceController::class, 'index'])->name('admin.attendance.index');
+    Route::post('admin/attendance', [\App\Http\Controllers\Admin\AttendanceController::class, 'store'])->name('admin.attendance.store');
+
 
     Route::get('admin/settings', function () {
         $settings = \App\Models\Setting::all()->groupBy('group');

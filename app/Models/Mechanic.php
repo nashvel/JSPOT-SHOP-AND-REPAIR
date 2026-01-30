@@ -53,4 +53,9 @@ class Mechanic extends Model
     {
         $this->increment('total_labor_earned', $amount);
     }
+
+    public function attendances(): \Illuminate\Database\Eloquent\Relations\MorphMany
+    {
+        return $this->morphMany(Attendance::class, 'attendable');
+    }
 }

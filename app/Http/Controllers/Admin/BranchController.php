@@ -223,4 +223,22 @@ class BranchController extends Controller
         return redirect()->back()
             ->with('success', 'Staff permissions updated successfully!');
     }
+
+    /**
+     * Update branch coordinates only (for map dragging).
+     */
+    public function updateCoordinates(Request $request, Branch $branch)
+    {
+        $validated = $request->validate([
+            'latitude' => 'required|numeric',
+            'longitude' => 'required|numeric',
+        ]);
+
+        $branch->update([
+            'latitude' => $validated['latitude'],
+            'longitude' => $validated['longitude'],
+        ]);
+
+        return back()->with('success', 'Branch location updated successfully!');
+    }
 }

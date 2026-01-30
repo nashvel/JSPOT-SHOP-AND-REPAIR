@@ -64,4 +64,9 @@ class User extends Authenticatable
     {
         return $this->belongsTo(Role::class);
     }
+
+    public function attendances()
+    {
+        return $this->morphMany(Attendance::class, 'attendable');
+    }
 }

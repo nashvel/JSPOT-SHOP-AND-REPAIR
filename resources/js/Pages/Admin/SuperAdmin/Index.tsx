@@ -13,6 +13,11 @@ interface Admin {
         name: string;
         display_name: string;
     };
+    menus: Array<{
+        id: number;
+        name: string;
+        route: string;
+    }>;
     created_at: string;
     menus_count: number;
 }
@@ -24,6 +29,15 @@ interface Role {
     description: string;
 }
 
+interface Menu {
+    id: number;
+    name: string;
+    route: string;
+    icon: string;
+    group: string;
+    order: number;
+}
+
 interface Props {
     admins: {
         data: Admin[];
@@ -32,14 +46,16 @@ interface Props {
         last_page: number;
     };
     roles: Role[];
+    availableMenus: Menu[];
     filters: {
         search?: string;
     };
 }
 
-export default function Index({ admins, roles, filters }: Props) {
+export default function Index({ admins, roles, availableMenus, filters }: Props) {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [editingAdmin, setEditingAdmin] = useState<Admin | null>(null);
+    const [managingMenus, setManagingMenus] = useState<Admin | null>(null);
 
     const { data, setData, post, put, processing, reset, errors } = useForm({
         name: '',
@@ -47,6 +63,10 @@ export default function Index({ admins, roles, filters }: Props) {
         password: '',
         password_confirmation: '',
         role_id: roles[0]?.id || '',
+    });
+
+    const { data: menuData, setData: setMenuData, post: postMenus, processing: processingMenus } = useForm({
+        menus: [] as number[],
     });
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -106,8 +126,51 @@ export default function Index({ admins, roles, filters }: Props) {
     const closeModal = () => {
         setShowCreateModal(false);
         setEditingAdmin(null);
+        setManagingMenus(null);
         reset();
     };
+
+    const openMenuModal = (admin: Admin) => {
+        setManagingMenus(admin);
+        setMenuData('menus', admin.menus.map(m => m.id));
+    };
+
+    const handleMenuSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!managingMenus) return;
+
+        postMenus(route('admin.super-admin.menus.update', managingMenus.id), {
+            onSuccess: () => {
+                setManagingMenus(null);
+                Swal.fire('Updated!', 'Menu permissions updated successfully', 'success');
+            },
+        });
+    };
+
+    const toggleMenu = (menuId: number) => {
+        const currentMenus = menuData.menus;
+        if (currentMenus.includes(menuId)) {
+            setMenuData('menus', currentMenus.filter(id => id !== menuId));
+        } else {
+            setMenuData('menus', [...currentMenus, menuId]);
+        }
+    };
+
+    const toggleAllMenus = () => {
+        if (menuData.menus.length === availableMenus.length) {
+            setMenuData('menus', []);
+        } else {
+            setMenuData('menus', availableMenus.map(m => m.id));
+        }
+    };
+
+    // Group menus by group
+    const groupedMenus = availableMenus.reduce((acc: any, menu: Menu) => {
+        const group = menu.group || 'Other';
+        if (!acc[group]) acc[group] = [];
+        acc[group].push(menu);
+        return acc;
+    }, {});
 
     return (
         <AuthenticatedLayout>
@@ -246,14 +309,23 @@ export default function Index({ admins, roles, filters }: Props) {
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                                     <button
+                                                        onClick={() => openMenuModal(admin)}
+                                                        className="text-purple-600 hover:text-purple-900 mr-4"
+                                                        title="Manage Menus"
+                                                    >
+                                                        <Key className="h-4 w-4" />
+                                                    </button>
+                                                    <button
                                                         onClick={() => openEditModal(admin)}
                                                         className="text-indigo-600 hover:text-indigo-900 mr-4"
+                                                        title="Edit"
                                                     >
                                                         <Edit className="h-4 w-4" />
                                                     </button>
                                                     <button
                                                         onClick={() => handleDelete(admin)}
                                                         className="text-red-600 hover:text-red-900"
+                                                        title="Delete"
                                                     >
                                                         <Trash2 className="h-4 w-4" />
                                                     </button>
@@ -365,6 +437,80 @@ export default function Index({ admins, roles, filters }: Props) {
                                     className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
                                 >
                                     {processing ? 'Saving...' : editingAdmin ? 'Update' : 'Create'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+            
+            {/* Menu Management Modal */}
+            {managingMenus && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+                        <div className="p-6 border-b">
+                            <h3 className="text-xl font-bold text-gray-900">
+                                Manage Menu Permissions - {managingMenus.name}
+                            </h3>
+                            <p className="text-sm text-gray-500 mt-1">
+                                Select which menus this admin can access
+                            </p>
+                        </div>
+
+                        <form onSubmit={handleMenuSubmit} className="flex-1 overflow-y-auto p-6">
+                            <div className="mb-4 flex items-center justify-between">
+                                <button
+                                    type="button"
+                                    onClick={toggleAllMenus}
+                                    className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+                                >
+                                    {menuData.menus.length === availableMenus.length ? 'Deselect All' : 'Select All'}
+                                </button>
+                                <span className="text-sm text-gray-500">
+                                    {menuData.menus.length} of {availableMenus.length} selected
+                                </span>
+                            </div>
+
+                            <div className="space-y-6">
+                                {Object.entries(groupedMenus).map(([group, menus]: [string, any]) => (
+                                    <div key={group} className="border rounded-lg p-4">
+                                        <h4 className="font-semibold text-gray-900 mb-3 uppercase text-xs tracking-wider">
+                                            {group}
+                                        </h4>
+                                        <div className="space-y-2">
+                                            {menus.map((menu: Menu) => (
+                                                <label
+                                                    key={menu.id}
+                                                    className="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer"
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={menuData.menus.includes(menu.id)}
+                                                        onChange={() => toggleMenu(menu.id)}
+                                                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                                    />
+                                                    <span className="ml-3 text-sm text-gray-700">{menu.name}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="flex gap-3 pt-6 border-t mt-6">
+                                <button
+                                    type="button"
+                                    onClick={() => setManagingMenus(null)}
+                                    className="flex-1 px-4 py-2 border rounded-lg hover:bg-gray-50"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={processingMenus}
+                                    className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+                                >
+                                    {processingMenus ? 'Saving...' : 'Save Permissions'}
                                 </button>
                             </div>
                         </form>

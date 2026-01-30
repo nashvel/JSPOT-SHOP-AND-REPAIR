@@ -20,7 +20,7 @@ class SuperAdminController extends Controller
             abort(403, 'Unauthorized. Only Super Admins can access this page.');
         }
 
-        $admins = User::with('role')
+        $admins = User::with('role', 'menus')
             ->whereNull('branch_id')
             ->whereHas('role', function ($query) {
                 $query->where('name', '!=', 'super_admin');
@@ -41,9 +41,13 @@ class SuperAdminController extends Controller
             ->orderBy('display_name')
             ->get();
 
+        // Get all available menus
+        $availableMenus = \App\Models\Menu::orderBy('order')->get();
+
         return Inertia::render('Admin/SuperAdmin/Index', [
             'admins' => $admins,
             'roles' => $roles,
+            'availableMenus' => $availableMenus,
             'filters' => $request->only(['search']),
         ]);
     }
@@ -138,5 +142,31 @@ class SuperAdminController extends Controller
 
         return redirect()->route('admin.super-admin.index')
             ->with('success', 'System Admin deleted successfully!');
+    }
+
+    /**
+     * Update menus for a specific admin user.
+     */
+    public function updateMenus(Request $request, User $user)
+    {
+        // Only super admins can update menus
+        if (auth()->user()->role?->name !== 'super_admin') {
+            abort(403, 'Unauthorized');
+        }
+
+        // Prevent updating super admins
+        if ($user->role?->name === 'super_admin') {
+            return back()->withErrors(['error' => 'Cannot modify Super Admin accounts.']);
+        }
+
+        $validated = $request->validate([
+            'menus' => 'array',
+            'menus.*' => 'exists:menus,id',
+        ]);
+
+        $user->menus()->sync($validated['menus'] ?? []);
+
+        return redirect()->route('admin.super-admin.index')
+            ->with('success', 'Menu permissions updated successfully!');
     }
 }

@@ -1,6 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
+import React from 'react';
 import { ChevronRight, ChevronDown, Navigation, Plus, Edit, Trash2, Users, Store } from 'lucide-react';
 
 interface Staff {
@@ -86,9 +87,9 @@ export default function Index({ branches }: Props) {
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
                                 {branches.map((branch) => (
-                                    <>
+                                    <React.Fragment key={branch.id}>
                                         {/* Branch Row */}
-                                        <tr key={`branch-${branch.id}`} className="bg-gray-50/50 hover:bg-gray-100/50">
+                                        <tr className="bg-gray-50/50 hover:bg-gray-100/50">
                                             <td className="px-6 py-4">
                                                 <button
                                                     onClick={() => toggleBranch(branch.id)}
@@ -196,7 +197,7 @@ export default function Index({ branches }: Props) {
                                                 </td>
                                             </tr>
                                         )}
-                                    </>
+                                    </React.Fragment>
                                 ))}
 
                                 {branches.length === 0 && (
