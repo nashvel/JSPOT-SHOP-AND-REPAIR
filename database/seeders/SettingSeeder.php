@@ -26,5 +26,37 @@ class SettingSeeder extends Seeder
             'type' => 'integer',
             'group' => 'dashboard'
         ]);
+
+        Setting::updateOrCreate(['key' => 'company_email'], [
+            'value' => 'info@jspotmotors.com',
+            'type' => 'string',
+            'group' => 'contact'
+        ]);
+
+        // Theme Colors
+        Setting::updateOrCreate(['key' => 'theme_primary_color'], [
+            'value' => 'purple',
+            'type' => 'string',
+            'group' => 'theme'
+        ]);
+
+        Setting::updateOrCreate(['key' => 'theme_secondary_color'], [
+            'value' => 'gray',
+            'type' => 'string',
+            'group' => 'theme'
+        ]);
+
+        Setting::updateOrCreate(['key' => 'theme_accent_color'], [
+            'value' => 'red',
+            'type' => 'string',
+            'group' => 'theme'
+        ]);
+
+        // Site Tagline
+        Setting::updateOrCreate(['key' => 'site_tagline'], [
+            'value' => 'Your Trusted Auto Parts Dealer',
+            'type' => 'string',
+            'group' => 'branding'
+        ]);
     }
 }

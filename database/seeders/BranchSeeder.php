@@ -4,11 +4,21 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use App\Models\Branch;
+use App\Models\User;
+use Illuminate\Support\Facades\Hash;
 
 class BranchSeeder extends Seeder
 {
     public function run(): void
     {
+        // Create user for Main Branch
+        $mainUser = User::create([
+            'name' => 'Main Branch Manager',
+            'email' => 'main.branch@jspot.com',
+            'password' => Hash::make('password'),
+            'role' => 'branch_manager',
+        ]);
+
         Branch::create([
             'name' => 'Main Branch (Makati)',
             'address' => 'Ayala Ave, Makati, Metro Manila',
@@ -16,6 +26,15 @@ class BranchSeeder extends Seeder
             'latitude' => 14.5547,
             'longitude' => 121.0244,
             'is_main' => true,
+            'user_id' => $mainUser->id,
+        ]);
+
+        // Create user for Downtown Branch
+        $downtownUser = User::create([
+            'name' => 'Downtown Branch Manager',
+            'email' => 'downtown.branch@jspot.com',
+            'password' => Hash::make('password'),
+            'role' => 'branch_manager',
         ]);
 
         Branch::create([
@@ -25,8 +44,17 @@ class BranchSeeder extends Seeder
             'latitude' => 14.5826,
             'longitude' => 120.9787,
             'is_main' => false,
+            'user_id' => $downtownUser->id,
         ]);
         
+        // Create user for Uptown Branch
+        $uptownUser = User::create([
+            'name' => 'Uptown Branch Manager',
+            'email' => 'uptown.branch@jspot.com',
+            'password' => Hash::make('password'),
+            'role' => 'branch_manager',
+        ]);
+
         Branch::create([
             'name' => 'Uptown Branch (QC)',
             'address' => 'Quezon Memorial Circle, QC',
@@ -34,6 +62,7 @@ class BranchSeeder extends Seeder
             'latitude' => 14.6516,
             'longitude' => 121.0493,
             'is_main' => false,
+            'user_id' => $uptownUser->id,
         ]);
     }
 }

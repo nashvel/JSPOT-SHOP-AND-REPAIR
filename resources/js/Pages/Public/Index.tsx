@@ -1,17 +1,30 @@
 import PublicLayout from '@/Layouts/PublicLayout';
 import { Head, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
-import { MapPin, Search } from 'lucide-react';
+import { ChevronRight, Star } from 'lucide-react';
 import Modal from '@/Components/Modal';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
+import { useCart } from '@/hooks/useCart';
+import {
+    HeroSection,
+    ProductCard,
+    TestimonialsCarousel,
+    BrandLogosCarousel,
+    BranchSelectionSection,
+    QuickViewModal,
+} from '@/Components/Public';
 
-export default function Index({ products, branches, currentBranch, canLogin }: any) {
-    const [search, setSearch] = useState('');
+export default function Index({ products, branches, currentBranch, searchIndex, sections, companyEmail, themeColors = { primary: 'purple', secondary: 'gray', accent: 'red' }, tagline, canLogin }: any) {
     const [selectedProduct, setSelectedProduct] = useState<any>(null);
     const [isReservationOpen, setIsReservationOpen] = useState(false);
+    const [isQuickViewOpen, setIsQuickViewOpen] = useState(false);
+    const [addedToCart, setAddedToCart] = useState(false);
+    const [isLocating, setIsLocating] = useState(false);
+    const [nearestBranch, setNearestBranch] = useState<any>(null);
+    const { addItem } = useCart();
 
     const { data, setData, post, processing, reset, errors } = useForm({
         branch_id: currentBranch || (branches[0]?.id || ''),
@@ -20,11 +33,9 @@ export default function Index({ products, branches, currentBranch, canLogin }: a
         items: [] as any[],
     });
 
-    const handleBranchChange = (e: any) => {
-        router.get('/', { branch: e.target.value }, { preserveState: true });
-        setData('branch_id', e.target.value);
-    };
-
+    // ──────────────────────────────────────────────────────────────
+    // Reservation Modal Handlers
+    // ──────────────────────────────────────────────────────────────
     const openReservation = (product: any) => {
         setSelectedProduct(product);
         setData('items', [{ product_id: product.id, quantity: 1 }]);
@@ -43,76 +54,200 @@ export default function Index({ products, branches, currentBranch, canLogin }: a
         });
     };
 
+    // ──────────────────────────────────────────────────────────────
+    // Quick View Modal Handlers
+    // ──────────────────────────────────────────────────────────────
+    const openQuickView = (product: any) => {
+        setSelectedProduct(product);
+        setAddedToCart(false);
+        setIsQuickViewOpen(true);
+    };
+
+    const closeQuickView = () => {
+        setIsQuickViewOpen(false);
+        setSelectedProduct(null);
+    };
+
+    const handleAddToCart = () => {
+        if (selectedProduct) {
+            addItem({
+                id: selectedProduct.id,
+                name: selectedProduct.name,
+                price: selectedProduct.price,
+                image: 'https://placehold.co/300?text=' + encodeURIComponent(selectedProduct.name),
+                branchName: currentBranch || 'Any Branch',
+            });
+            setAddedToCart(true);
+            setTimeout(() => setAddedToCart(false), 2000);
+        }
+    };
+
+    // ──────────────────────────────────────────────────────────────
+    // Geolocation - Find Nearest Store
+    // ──────────────────────────────────────────────────────────────
+    const branchCoordinates: Record<string, { lat: number; lng: number }> = {
+        'Main Branch': { lat: 14.5995, lng: 120.9842 },
+        'Downtown': { lat: 14.5944, lng: 120.9772 },
+        'North Branch': { lat: 14.6760, lng: 121.0437 },
+    };
+
+    const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number) => {
+        const R = 6371;
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLng = (lng2 - lng1) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) ** 2 +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLng / 2) ** 2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    };
+
+    const findNearestStore = () => {
+        if (!navigator.geolocation) {
+            alert('Geolocation is not supported by your browser');
+            return;
+        }
+        setIsLocating(true);
+        setNearestBranch(null);
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const { latitude, longitude } = position.coords;
+                let closest: any = null;
+                let minDist = Infinity;
+                branches.forEach((branch: any) => {
+                    const coords = branchCoordinates[branch.name];
+                    if (coords) {
+                        const dist = calculateDistance(latitude, longitude, coords.lat, coords.lng);
+                        if (dist < minDist) {
+                            minDist = dist;
+                            closest = { ...branch, distance: dist.toFixed(1) };
+                        }
+                    }
+                });
+                setNearestBranch(closest);
+                setIsLocating(false);
+            },
+            () => {
+                alert('Unable to get your location. Please select a branch manually.');
+                setIsLocating(false);
+            }
+        );
+    };
+
     return (
-        <PublicLayout>
-            <Head title="Catalog" />
+        <PublicLayout branches={branches} currentBranch={currentBranch} searchIndex={searchIndex} companyEmail={companyEmail} themeColors={themeColors} tagline={tagline}>
+            <Head title="Premium Auto Parts & Accessories" />
 
-            {/* Hero & Filters */}
-            <div className="bg-gray-50 py-12 border-b border-gray-200">
-                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                    <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 mb-6">
-                        Find the best parts for your ride.
-                    </h1>
+            <style>{`
+                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+                .promo-badge { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+                @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .8; } }
+                .product-card:hover .product-image { transform: scale(1.05); }
+                .product-card .product-image { transition: transform 0.3s ease-in-out; }
+                * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+            `}</style>
 
-                    <div className="flex flex-col sm:flex-row gap-4 items-center">
-                        <div className="relative flex-1 w-full sm:w-auto">
-                            <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-                            <input
-                                type="text"
-                                placeholder="Search parts, oils, accessories..."
-                                className="w-full rounded-lg border-gray-300 pl-10 h-12 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                            />
-                        </div>
-                        <div className="relative w-full sm:w-64">
-                            <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-                            <select
-                                value={currentBranch || ''}
-                                onChange={handleBranchChange}
-                                className="w-full rounded-lg border-gray-300 pl-10 h-12 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                            >
-                                <option value="">All Branches</option>
-                                {branches.map((b: any) => (
-                                    <option key={b.id} value={b.id}>{b.name}</option>
-                                ))}
-                            </select>
-                        </div>
+            {/* Hero Section */}
+            {currentBranch && <HeroSection themeColors={themeColors} />}
+
+
+            {/* Product Sections by Category */}
+            <div id="products" className="bg-white py-12">
+                {currentBranch ? (
+                    <div className="space-y-16">
+                        {sections && sections.length > 0 ? (
+                            sections.map((section: any) => {
+                                // section.products is already loaded from backend
+                                if (!section.products || section.products.length === 0) return null;
+                                const displayedProducts = section.products.slice(0, 12);
+
+                                return (
+                                    <div key={section.id}>
+                                        <div className="px-4 sm:px-6 lg:px-8 mb-6">
+                                            <div className="flex items-center justify-between">
+                                                <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-purple-900 uppercase tracking-tight">
+                                                    {section.name}
+                                                </h2>
+                                                <button
+                                                    onClick={() => router.get(`/section/${section.slug}`, { branch: currentBranch || '' }, { preserveState: false })}
+                                                    className="text-purple-600 hover:text-purple-800 font-semibold flex items-center gap-1 text-sm"
+                                                >
+                                                    View All <ChevronRight className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div className="px-4 sm:px-6 lg:px-8">
+                                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                                                {displayedProducts.map((product: any) => (
+                                                    <ProductCard
+                                                        key={product.id}
+                                                        product={product}
+                                                        themeColors={themeColors}
+                                                        onViewProduct={openQuickView}
+                                                        onReserve={openReservation}
+                                                    />
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        ) : (
+                            /* Fallback: show all products without sections */
+                            <div className="px-4 sm:px-6 lg:px-8">
+                                <div className="mx-auto max-w-7xl mb-6">
+                                    <h2 className="text-xl sm:text-2xl font-black text-purple-900 uppercase tracking-tight">
+                                        All Products
+                                    </h2>
+                                </div>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                                    {products.slice(0, 24).map((product: any) => (
+                                        <ProductCard
+                                            key={product.id}
+                                            product={product}
+                                            themeColors={themeColors}
+                                            onViewProduct={openQuickView}
+                                            onReserve={openReservation}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
-                </div>
+                ) : (
+                    // Branch Selection Screen
+                    <BranchSelectionSection
+                        branches={branches}
+                        nearestBranch={nearestBranch}
+                        isLocating={isLocating}
+                        onFindNearest={findNearestStore}
+                    />
+                )}
             </div>
 
-            {/* Product Grid */}
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-                    {products.filter((p: any) => p.name.toLowerCase().includes(search.toLowerCase())).map((product: any) => (
-                        <div key={product.id} className="group relative bg-white border border-gray-100 rounded-xl overflow-hidden hover:shadow-lg transition-shadow">
-                            <div className="aspect-square bg-gray-100 flex items-center justify-center">
-                                {/* Placeholder for Image */}
-                                <img
-                                    src={'https://placehold.co/400?text=' + product.name}
-                                    alt={product.name}
-                                    className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                />
-                            </div>
-                            <div className="p-4">
-                                <h3 className="text-lg font-semibold text-gray-900">{product.name}</h3>
-                                <p className="text-sm text-gray-500 mt-1">{product.description}</p>
-                                <div className="mt-4 flex items-center justify-between">
-                                    <span className="text-lg font-bold text-gray-900">₱{product.price}</span>
-                                    <button
-                                        onClick={() => openReservation(product)}
-                                        className="text-sm font-medium text-indigo-600 hover:text-indigo-500"
-                                    >
-                                        Reserve Now
-                                    </button>
-                                </div>
-                                <div className="mt-2 text-xs text-gray-400">
-                                    Available in {product.branches?.length || 0} branches
-                                </div>
-                            </div>
-                        </div>
-                    ))}
+            {/* Testimonials */}
+            <TestimonialsCarousel />
+
+            {/* Brand Logos */}
+            <BrandLogosCarousel />
+
+            {/* Newsletter */}
+            <div className="bg-white py-16 border-t border-gray-100">
+                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
+                    <h2 className="text-2xl sm:text-3xl font-bold text-purple-900 mb-4">Stay Updated</h2>
+                    <p className="text-gray-600 mb-8 max-w-xl mx-auto">
+                        Subscribe to our newsletter for exclusive deals and new arrivals.
+                    </p>
+                    <form className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto">
+                        <input
+                            type="email"
+                            placeholder="Enter your email"
+                            className="flex-1 px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-400 focus:border-purple-400"
+                        />
+                        <button type="submit" className="bg-purple-700 text-white px-6 py-3 rounded-lg font-bold hover:bg-purple-800 transition-colors">
+                            Subscribe
+                        </button>
+                    </form>
                 </div>
             </div>
 
@@ -127,7 +262,7 @@ export default function Index({ products, branches, currentBranch, canLogin }: a
                             <InputLabel htmlFor="branch" value="Select Pickup Branch" />
                             <select
                                 id="branch"
-                                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-purple-500 focus:ring-purple-500"
                                 value={data.branch_id}
                                 onChange={(e) => setData('branch_id', e.target.value)}
                                 required
@@ -190,6 +325,20 @@ export default function Index({ products, branches, currentBranch, canLogin }: a
                     </form>
                 </div>
             </Modal>
+
+            {/* Quick View Modal */}
+            <QuickViewModal
+                product={selectedProduct}
+                isOpen={isQuickViewOpen}
+                onClose={closeQuickView}
+                onAddToCart={handleAddToCart}
+                onReserve={() => {
+                    closeQuickView();
+                    if (selectedProduct) openReservation(selectedProduct);
+                }}
+                addedToCart={addedToCart}
+                currentBranch={currentBranch}
+            />
         </PublicLayout>
     );
 }

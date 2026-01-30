@@ -9,11 +9,16 @@ class Branch extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'address', 'contact_number', 'is_main', 'latitude', 'longitude'];
+    protected $fillable = ['name', 'address', 'contact_number', 'is_main', 'latitude', 'longitude', 'user_id'];
 
     protected $casts = [
         'is_main' => 'boolean',
     ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 
     public function users()
     {

@@ -11,6 +11,9 @@ Route::get('/track', [\App\Http\Controllers\PublicController::class, 'track'])->
 Route::post('/track/search', [\App\Http\Controllers\PublicController::class, 'searchJob'])->name('public.track.search');
 Route::post('/reserve', [\App\Http\Controllers\PublicController::class, 'storeReservation'])->name('public.reserve');
 Route::get('/receipt/{token}', [\App\Http\Controllers\PublicReceiptController::class, 'show'])->name('public.receipt');
+Route::get('/section/{slug}', [\App\Http\Controllers\PublicController::class, 'section'])->name('public.section');
+Route::get('/cart', [\App\Http\Controllers\PublicController::class, 'cart'])->name('public.cart');
+Route::get('/wishlist', [\App\Http\Controllers\PublicController::class, 'wishlist'])->name('public.wishlist');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', \App\Http\Controllers\DashboardRedirectController::class)->name('dashboard');
