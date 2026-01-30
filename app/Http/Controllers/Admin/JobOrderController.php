@@ -60,7 +60,28 @@ class JobOrderController extends Controller
             'vehicle_details' => 'required|string',
         ]);
 
+        $oldStatus = $jobOrder->status;
+        $newStatus = $validated['status'];
+
         $jobOrder->update($validated);
+
+        // If status changed to completed, add labor cost to mechanic's total earned
+        if ($oldStatus !== 'completed' && $newStatus === 'completed' && $jobOrder->mechanic_id && $jobOrder->labor_cost > 0) {
+            $mechanic = $jobOrder->mechanic;
+            $mechanic->increment('total_labor_earned', $jobOrder->labor_cost);
+            
+            // Set completed_at timestamp
+            $jobOrder->update(['completed_at' => now()]);
+        }
+
+        // If status changed from completed to something else, subtract labor cost
+        if ($oldStatus === 'completed' && $newStatus !== 'completed' && $jobOrder->mechanic_id && $jobOrder->labor_cost > 0) {
+            $mechanic = $jobOrder->mechanic;
+            $mechanic->decrement('total_labor_earned', $jobOrder->labor_cost);
+            
+            // Clear completed_at timestamp
+            $jobOrder->update(['completed_at' => null]);
+        }
 
         return redirect()->route('admin.job-orders.index')
             ->with('success', 'Job Order updated successfully!');

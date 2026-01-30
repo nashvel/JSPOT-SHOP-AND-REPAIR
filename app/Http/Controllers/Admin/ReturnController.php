@@ -13,7 +13,21 @@ class ReturnController extends Controller
 {
     public function index(Request $request)
     {
+        $user = auth()->user();
+
         $returns = SalesReturn::with(['sale.user', 'sale.branch', 'saleItem', 'approver'])
+            // Filter by branch if user belongs to a branch
+            ->when($user->branch_id, function ($query) use ($user) {
+                $query->whereHas('sale', function ($q) use ($user) {
+                    $q->where('branch_id', $user->branch_id);
+                });
+            })
+            // System Admin: filter by selected branch if provided
+            ->when(!$user->branch_id && $request->branch_id, function ($query) use ($request) {
+                $query->whereHas('sale', function ($q) use ($request) {
+                    $q->where('branch_id', $request->branch_id);
+                });
+            })
             ->when($request->status, function ($query, $status) {
                 $query->where('status', $status);
             })
@@ -21,9 +35,13 @@ class ReturnController extends Controller
             ->paginate(15)
             ->withQueryString();
 
+        $branches = \App\Models\Branch::all();
+
         return Inertia::render('Admin/Returns/Index', [
             'returns' => $returns,
-            'filters' => $request->only(['status']),
+            'branches' => $branches,
+            'filters' => $request->only(['status', 'branch_id']),
+            'userBranchId' => $user->branch_id,
         ]);
     }
 

@@ -240,7 +240,9 @@ export default function Index({ products, categories: initialCategories, branche
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     {product.type === 'product' ? (
                                                         <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                                            {product.branches?.reduce((acc: number, b: any) => acc + b.pivot.stock_quantity, 0) || 0} Units
+                                                            {Array.isArray(product.branches) 
+                                                                ? product.branches.reduce((acc: number, b: any) => acc + (b.pivot?.stock_quantity || 0), 0)
+                                                                : 0} Units
                                                         </span>
                                                     ) : (
                                                         <span className="text-gray-400 text-xs">N/A</span>

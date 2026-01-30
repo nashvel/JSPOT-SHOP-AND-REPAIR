@@ -18,9 +18,16 @@ interface SaleReturn {
     };
     sale_item: {
         product_name: string;
+        product_type: 'product' | 'service';
+        category_name: string | null;
         unit_price: number;
     };
     approver?: { name: string };
+}
+
+interface Branch {
+    id: number;
+    name: string;
 }
 
 interface Props {
@@ -30,10 +37,12 @@ interface Props {
         current_page: number;
         last_page: number;
     };
-    filters: { status?: string };
+    branches: Branch[];
+    filters: { status?: string; branch_id?: number };
+    userBranchId: number | null;
 }
 
-export default function Index({ returns, filters }: Props) {
+export default function Index({ returns, branches, filters, userBranchId }: Props) {
     const [processing, setProcessing] = useState<number | null>(null);
 
     const formatPrice = (price: number) => `₱${parseFloat(String(price)).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
@@ -57,7 +66,17 @@ export default function Index({ returns, filters }: Props) {
     };
 
     const filterByStatus = (status: string) => {
-        router.get(route('admin.returns.index'), { status: status || undefined }, { preserveState: true });
+        router.get(route('admin.returns.index'), { 
+            status: status || undefined,
+            branch_id: filters.branch_id 
+        }, { preserveState: true });
+    };
+
+    const filterByBranch = (branchId: string) => {
+        router.get(route('admin.returns.index'), { 
+            branch_id: branchId || undefined,
+            status: filters.status 
+        }, { preserveState: true });
     };
 
     const StatusBadge = ({ status }: { status: string }) => {
@@ -89,7 +108,24 @@ export default function Index({ returns, filters }: Props) {
                     </div>
 
                     {/* Filters */}
-                    <div className="flex gap-2 mb-6">
+                    <div className="flex flex-wrap gap-2 mb-6">
+                        {/* Branch Filter (System Admin Only) */}
+                        {!userBranchId && branches.length > 0 && (
+                            <select
+                                value={filters.branch_id || ''}
+                                onChange={(e) => filterByBranch(e.target.value)}
+                                className="px-4 py-2 rounded-lg border-gray-200 bg-white focus:ring-2 focus:ring-indigo-500 font-medium"
+                            >
+                                <option value="">All Branches</option>
+                                {branches.map(branch => (
+                                    <option key={branch.id} value={branch.id}>
+                                        {branch.name}
+                                    </option>
+                                ))}
+                            </select>
+                        )}
+
+                        {/* Status Filters */}
                         <button
                             onClick={() => filterByStatus('')}
                             className={`px-4 py-2 rounded-lg font-medium ${!filters.status ? 'bg-indigo-600 text-white' : 'bg-gray-100 hover:bg-gray-200'}`}
@@ -129,10 +165,21 @@ export default function Index({ returns, filters }: Props) {
                                             <Package className="h-6 w-6 text-orange-600" />
                                         </div>
                                         <div>
-                                            <h3 className="font-semibold text-gray-900">{ret.sale_item.product_name}</h3>
+                                            <div className="flex items-center gap-2">
+                                                <h3 className="font-semibold text-gray-900">{ret.sale_item.product_name}</h3>
+                                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${ret.sale_item.product_type === 'product' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
+                                                    {ret.sale_item.product_type === 'product' ? 'Product' : 'Service'}
+                                                </span>
+                                                {ret.sale_item.category_name && (
+                                                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                                                        {ret.sale_item.category_name}
+                                                    </span>
+                                                )}
+                                            </div>
                                             <p className="text-sm text-gray-500">
                                                 Sale: <span className="font-mono text-indigo-600">{ret.sale.sale_number}</span>
                                                 {' · '}{ret.sale.customer_name}
+                                                {' · '}<span className="font-medium">{ret.sale.branch.name}</span>
                                             </p>
                                             <div className="mt-2 flex items-center gap-4 text-sm">
                                                 <span className="font-medium">Qty: {ret.quantity}</span>

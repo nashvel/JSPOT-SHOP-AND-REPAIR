@@ -38,17 +38,22 @@ return new class extends Migration {
             ['name' => 'Sales Record', 'icon' => 'Receipt', 'group' => 'Operations', 'order' => 4, 'parent_id' => null]
         );
 
+        $returnApproval = Menu::firstOrCreate(
+            ['route' => 'admin.returns.index'],
+            ['name' => 'Return Approval', 'icon' => 'RotateCcw', 'group' => 'Operations', 'order' => 5, 'parent_id' => null]
+        );
+
         // ============================================
         // INVENTORY
         // ============================================
         $products = Menu::firstOrCreate(
             ['route' => 'admin.products.index'],
-            ['name' => 'Products & Services', 'icon' => 'Package', 'group' => 'Inventory', 'order' => 5, 'parent_id' => null]
+            ['name' => 'Products & Services', 'icon' => 'Package', 'group' => 'Inventory', 'order' => 6, 'parent_id' => null]
         );
 
         $stocks = Menu::firstOrCreate(
             ['route' => 'admin.stocks.index'],
-            ['name' => 'Inventory Management', 'icon' => 'ArrowLeftRight', 'group' => 'Inventory', 'order' => 6, 'parent_id' => null]
+            ['name' => 'Inventory Management', 'icon' => 'ArrowLeftRight', 'group' => 'Inventory', 'order' => 7, 'parent_id' => null]
         );
 
         // ============================================
@@ -56,27 +61,27 @@ return new class extends Migration {
         // ============================================
         $branchLocations = Menu::firstOrCreate(
             ['route' => 'admin.branch-locations.index'],
-            ['name' => 'Branch Locations', 'icon' => 'MapPin', 'group' => 'Management', 'order' => 7, 'parent_id' => null]
+            ['name' => 'Branch Locations', 'icon' => 'MapPin', 'group' => 'Management', 'order' => 8, 'parent_id' => null]
         );
 
         $branches = Menu::firstOrCreate(
             ['route' => 'admin.branches.index'],
-            ['name' => 'Branch Accounts', 'icon' => 'Store', 'group' => 'Management', 'order' => 8, 'parent_id' => null]
+            ['name' => 'Branch Accounts', 'icon' => 'Store', 'group' => 'Management', 'order' => 9, 'parent_id' => null]
         );
 
         $mechanics = Menu::firstOrCreate(
             ['route' => 'admin.mechanics.index'],
-            ['name' => 'Mechanics', 'icon' => 'Wrench', 'group' => 'Management', 'order' => 9, 'parent_id' => null]
+            ['name' => 'Mechanics', 'icon' => 'Wrench', 'group' => 'Management', 'order' => 10, 'parent_id' => null]
         );
 
         $users = Menu::firstOrCreate(
             ['route' => 'admin.users.index'],
-            ['name' => 'Users', 'icon' => 'Users', 'group' => 'Management', 'order' => 10, 'parent_id' => null]
+            ['name' => 'Users', 'icon' => 'Users', 'group' => 'Management', 'order' => 11, 'parent_id' => null]
         );
 
         $settings = Menu::firstOrCreate(
             ['route' => 'admin.settings.index'],
-            ['name' => 'Settings', 'icon' => 'Settings', 'group' => 'Management', 'order' => 11, 'parent_id' => null]
+            ['name' => 'Settings', 'icon' => 'Settings', 'group' => 'Management', 'order' => 12, 'parent_id' => null]
         );
 
         // ============================================
@@ -84,7 +89,7 @@ return new class extends Migration {
         // ============================================
         $analyticsReports = Menu::firstOrCreate(
             ['route' => 'admin.analytics.sales'],
-            ['name' => 'Analytics & Reports', 'icon' => 'BarChart3', 'group' => 'Analytics', 'order' => 12, 'parent_id' => null]
+            ['name' => 'Analytics & Reports', 'icon' => 'BarChart3', 'group' => 'Analytics', 'order' => 13, 'parent_id' => null]
         );
 
         // ============================================
@@ -92,11 +97,13 @@ return new class extends Migration {
         // ============================================
         $adminUsers = User::whereNull('branch_id')->get();
 
-        // System Admin menus (no POS - they manage branches, not sell)
+        // System Admin menus (includes POS for viewing/testing, no branch restrictions)
         $adminMenuIds = [
             $dashboard->id,
+            $pos->id, // System Admin can access POS with branch selector
             $jobOrders->id,
             $salesRecord->id,
+            $returnApproval->id,
             $products->id,
             $stocks->id,
             $branchLocations->id,
@@ -122,6 +129,7 @@ return new class extends Migration {
             $pos->id,
             $jobOrders->id,
             $salesRecord->id,
+            $returnApproval->id,
             $products->id,
             $stocks->id,
             $mechanics->id,
@@ -143,6 +151,7 @@ return new class extends Migration {
             'admin.pos.index',
             'admin.job-orders.index',
             'admin.sales.index',
+            'admin.returns.index',
             'admin.products.index',
             'admin.stocks.index',
             'admin.branch-locations.index',
@@ -157,7 +166,6 @@ return new class extends Migration {
             $menu = Menu::where('route', $route)->first();
             if ($menu) {
                 $menu->users()->detach();
-                $menu->branches()->detach();
                 $menu->delete();
             }
         }

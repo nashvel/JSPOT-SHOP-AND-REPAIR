@@ -57,33 +57,54 @@ class SaleController extends Controller
         ]);
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $user = auth()->user();
+        
+        // Determine which branch to use
+        $branchId = $user->branch_id; // Branch users use their own branch
+        
+        // System Admin: use selected branch or default to first branch
+        if (!$branchId) {
+            $branchId = $request->branch_id ?? Branch::first()?->id;
+            
+            if (!$branchId) {
+                return redirect()->route('admin.dashboard')
+                    ->with('error', 'No branches available. Please create a branch first.');
+            }
+        }
 
-        // Get products with stock for user's branch
+        // Get products with stock for the selected branch
         $products = Product::where('type', 'product')
-            ->whereHas('branches', function ($query) use ($user) {
-                $query->where('branch_id', $user->branch_id)
+            ->whereHas('branches', function ($query) use ($branchId) {
+                $query->where('branch_id', $branchId)
                     ->where('stock_quantity', '>', 0);
-            })->with([
-                    'branches' => function ($query) use ($user) {
-                        $query->where('branch_id', $user->branch_id);
-                    }
-                ])->get();
+            })
+            ->with([
+                'branches' => function ($query) use ($branchId) {
+                    $query->where('branch_id', $branchId);
+                },
+                'category'
+            ])
+            ->get();
 
-        // Get services assigned to this branch
+        // Get services assigned to the selected branch
         $services = Product::where('type', 'service')
-            ->whereHas('branches', function ($query) use ($user) {
-                $query->where('branch_id', $user->branch_id);
-            })->get();
+            ->whereHas('branches', function ($query) use ($branchId) {
+                $query->where('branch_id', $branchId);
+            })
+            ->with('category')
+            ->get();
 
         $categories = \App\Models\Category::all();
 
-        // Get active mechanics for the branch
-        $mechanics = \App\Models\Mechanic::where('branch_id', $user->branch_id)
+        // Get active mechanics for the selected branch
+        $mechanics = \App\Models\Mechanic::where('branch_id', $branchId)
             ->where('is_active', true)
             ->get();
+
+        // Get all branches for System Admin dropdown
+        $branches = !$user->branch_id ? Branch::all() : collect();
 
         return Inertia::render('Admin/POS/Index', [
             'products' => $products,
@@ -91,6 +112,9 @@ class SaleController extends Controller
             'categories' => $categories,
             'mechanics' => $mechanics,
             'employee' => $user->only(['id', 'name']),
+            'branches' => $branches,
+            'selectedBranch' => $branchId,
+            'canSelectBranch' => !$user->branch_id, // Only System Admin can select branch
         ]);
     }
 
@@ -107,14 +131,23 @@ class SaleController extends Controller
             'payment_method' => 'required|in:cash,gcash,maya',
             'amount_paid' => 'required|numeric|min:0',
             'reference_number' => 'nullable|string|max:100',
+            'job_description' => 'nullable|string|max:1000', // For job order description
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
+            'branch_id' => 'nullable|exists:branches,id', // For System Admin
         ]);
 
         $user = auth()->user();
+        
+        // Determine which branch to use
+        $branchId = $user->branch_id ?? $validated['branch_id'] ?? null;
+        
+        if (!$branchId) {
+            return back()->withErrors(['branch_id' => 'Branch is required.']);
+        }
 
-        return DB::transaction(function () use ($validated, $user, $request) {
+        return DB::transaction(function () use ($validated, $user, $request, $branchId) {
             // Calculate totals and check for services
             $subtotal = 0;
             $itemsData = [];
@@ -136,7 +169,7 @@ class SaleController extends Controller
                 // Only check stock for products, not services
                 if ($product->type === 'product') {
                     $branchProduct = $product->branches()
-                        ->where('branch_id', $user->branch_id)
+                        ->where('branch_id', $branchId)
                         ->first();
 
                     if (!$branchProduct || $branchProduct->pivot->stock_quantity < $item['quantity']) {
@@ -156,6 +189,7 @@ class SaleController extends Controller
                     'product_id' => $product->id,
                     'product_name' => $product->name,
                     'product_type' => $product->type,
+                    'category_name' => $product->category ? $product->category->name : null,
                     'quantity' => $item['quantity'],
                     'unit_price' => $product->price,
                     'total' => $itemTotal,
@@ -163,7 +197,7 @@ class SaleController extends Controller
 
                 // Deduct stock only for products (not services)
                 if ($product->type === 'product') {
-                    $product->branches()->updateExistingPivot($user->branch_id, [
+                    $product->branches()->updateExistingPivot($branchId, [
                         'stock_quantity' => DB::raw("stock_quantity - {$item['quantity']}"),
                     ]);
                 }
@@ -175,7 +209,7 @@ class SaleController extends Controller
             // Create sale
             $sale = Sale::create([
                 'sale_number' => Sale::generateSaleNumber(),
-                'branch_id' => $user->branch_id,
+                'branch_id' => $branchId,
                 'user_id' => $user->id,
                 'mechanic_id' => $validated['mechanic_id'] ?? null,
                 'customer_name' => $validated['customer_name'],
@@ -213,9 +247,14 @@ class SaleController extends Controller
                     return $item['product']->price * $item['quantity'];
                 });
 
+                // Use custom description if provided, otherwise use auto-generated service list
+                $jobDescription = !empty($validated['job_description']) 
+                    ? $validated['job_description'] 
+                    : "Services: {$serviceDescription}";
+
                 $jobOrder = \App\Models\JobOrder::create([
                     'tracking_code' => \App\Models\JobOrder::generateTrackingCode(),
-                    'branch_id' => $user->branch_id,
+                    'branch_id' => $branchId,
                     'sale_id' => $sale->id,
                     'mechanic_id' => $validated['mechanic_id'],
                     'customer_name' => $validated['customer_name'],
@@ -224,18 +263,14 @@ class SaleController extends Controller
                     'engine_number' => $validated['engine_number'],
                     'chassis_number' => $validated['chassis_number'],
                     'plate_number' => $validated['plate_number'],
-                    'description' => "Services: {$serviceDescription}",
+                    'description' => $jobDescription,
                     'labor_cost' => $laborCost,
                     'parts_cost' => $partsCost,
                     'total_cost' => $laborCost + $partsCost,
                     'status' => 'pending',
                 ]);
 
-                // Add labor earnings to mechanic
-                $mechanic = \App\Models\Mechanic::find($validated['mechanic_id']);
-                if ($mechanic) {
-                    $mechanic->addLaborEarnings($laborCost);
-                }
+                // Note: Labor earnings will be added to mechanic when job status is changed to 'completed'
 
                 // Add purchased products as parts to job order
                 foreach ($productItems as $productItem) {

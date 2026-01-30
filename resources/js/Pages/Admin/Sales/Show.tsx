@@ -7,6 +7,8 @@ interface SaleItem {
     id: number;
     product_id: number;
     product_name: string;
+    product_type: 'product' | 'service';
+    category_name: string | null;
     quantity: number;
     unit_price: number;
     total: number;
@@ -176,6 +178,8 @@ export default function Show({ sale, receiptUrl }: Props) {
                                     <thead className="bg-gray-50">
                                         <tr>
                                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
                                             <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Qty</th>
                                             <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Price</th>
                                             <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total</th>
@@ -186,10 +190,19 @@ export default function Show({ sale, receiptUrl }: Props) {
                                         {sale.items.map(item => {
                                             const returnedQty = getReturnedQty(item.id);
                                             const availableQty = item.quantity - returnedQty;
+                                            const canReturn = item.product_type === 'product' && availableQty > 0;
 
                                             return (
                                                 <tr key={item.id}>
                                                     <td className="px-4 py-3 font-medium">{item.product_name}</td>
+                                                    <td className="px-4 py-3">
+                                                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${item.product_type === 'product' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
+                                                            {item.product_type === 'product' ? 'Product' : 'Service'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-4 py-3 text-sm text-gray-600">
+                                                        {item.category_name || '-'}
+                                                    </td>
                                                     <td className="px-4 py-3 text-center">
                                                         {item.quantity}
                                                         {returnedQty > 0 && (
@@ -199,7 +212,7 @@ export default function Show({ sale, receiptUrl }: Props) {
                                                     <td className="px-4 py-3 text-right">{formatPrice(item.unit_price)}</td>
                                                     <td className="px-4 py-3 text-right font-medium">{formatPrice(item.total)}</td>
                                                     <td className="px-4 py-3 text-right">
-                                                        {availableQty > 0 && (
+                                                        {canReturn ? (
                                                             <button
                                                                 onClick={() => openReturnModal(item)}
                                                                 className="text-orange-600 hover:text-orange-800 text-sm font-medium flex items-center gap-1 ml-auto"
@@ -207,7 +220,9 @@ export default function Show({ sale, receiptUrl }: Props) {
                                                                 <RotateCcw className="h-4 w-4" />
                                                                 Return
                                                             </button>
-                                                        )}
+                                                        ) : item.product_type === 'service' ? (
+                                                            <span className="text-gray-400 text-xs">N/A</span>
+                                                        ) : null}
                                                     </td>
                                                 </tr>
                                             );

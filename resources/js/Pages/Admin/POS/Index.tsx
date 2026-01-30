@@ -1,7 +1,13 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
-import { Search, Plus, Minus, Trash2, ShoppingCart, CreditCard, Banknote, Smartphone, X, CheckCircle, Package, Wrench, Menu, Grid, List } from 'lucide-react';
+import { Search, Plus, Minus, ShoppingCart, CreditCard, Banknote, Smartphone, X, CheckCircle, Package, Wrench, Menu } from 'lucide-react';
+import Swal from 'sweetalert2';
+
+interface Branch {
+    id: number;
+    name: string;
+}
 
 interface Category {
     id: number;
@@ -41,9 +47,22 @@ interface Props {
     categories: Category[];
     mechanics: Mechanic[];
     employee: Employee;
+    branches: Branch[];
+    selectedBranch: number;
+    canSelectBranch: boolean;
 }
 
-export default function Index({ products, services, categories, mechanics, employee }: Props) {
+export default function Index({ products, services, categories, mechanics, employee, branches, selectedBranch, canSelectBranch }: Props) {
+    // Debug: Log what we receive
+    console.log('POS Data:', { 
+        products: products?.length || 0, 
+        services: services?.length || 0,
+        categories: categories?.length || 0,
+        mechanics: mechanics?.length || 0,
+        canSelectBranch,
+        selectedBranch
+    });
+
     const [activeTab, setActiveTab] = useState<'products' | 'services'>('products');
     const [selectedCategory, setSelectedCategory] = useState<number | 'all'>('all');
     const [cart, setCart] = useState<CartItem[]>([]);
@@ -62,7 +81,9 @@ export default function Index({ products, services, categories, mechanics, emplo
         payment_method: '' as 'cash' | 'gcash' | 'maya' | '',
         amount_paid: 0,
         reference_number: '',
+        job_description: '', // For job order description when services are in cart
         items: [] as { product_id: number; quantity: number }[],
+        branch_id: selectedBranch, // For System Admin
     });
 
     const currentItems = activeTab === 'products' ? products : services;
@@ -160,13 +181,49 @@ export default function Index({ products, services, categories, mechanics, emplo
         setShowCheckout(true);
     };
 
-    const handleCheckout = (e: React.FormEvent) => {
+    const handleCheckout = async (e: React.FormEvent) => {
         e.preventDefault();
+        
+        // Show SweetAlert2 confirmation dialog
+        const result = await Swal.fire({
+            title: 'Confirm Transaction',
+            text: 'Are you sure you want to confirm this transaction? This action cannot be undone.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#4F46E5',
+            cancelButtonColor: '#6B7280',
+            confirmButtonText: 'Yes, Confirm',
+            cancelButtonText: 'Cancel',
+            reverseButtons: true,
+        });
+        
+        if (!result.isConfirmed) {
+            return;
+        }
+        
         post(route('admin.sales.store'), {
             onSuccess: () => {
                 setCart([]);
                 setShowCheckout(false);
                 reset();
+                
+                // Show success message
+                Swal.fire({
+                    title: 'Success!',
+                    text: 'Transaction completed successfully.',
+                    icon: 'success',
+                    confirmButtonColor: '#4F46E5',
+                    timer: 2000,
+                });
+            },
+            onError: () => {
+                // Show error message
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'Failed to complete transaction. Please try again.',
+                    icon: 'error',
+                    confirmButtonColor: '#4F46E5',
+                });
             },
         });
     };
@@ -186,6 +243,30 @@ export default function Index({ products, services, categories, mechanics, emplo
                         <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
 
                             <div className="flex gap-4 w-full md:w-auto">
+                                {/* Branch Selector (System Admin Only) */}
+                                {canSelectBranch && branches.length > 0 && (
+                                    <div className="relative min-w-[200px]">
+                                        <select
+                                            value={selectedBranch}
+                                            onChange={(e) => {
+                                                router.get(route('admin.pos.index'), { branch_id: e.target.value }, {
+                                                    preserveState: false,
+                                                });
+                                            }}
+                                            className="w-full pl-4 pr-10 py-2.5 bg-indigo-50 border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 transition-all text-sm font-medium appearance-none cursor-pointer text-indigo-900"
+                                        >
+                                            {branches.map(branch => (
+                                                <option key={branch.id} value={branch.id}>
+                                                    {branch.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-indigo-600">
+                                            <Menu className="h-4 w-4" />
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* Type Toggle */}
                                 <div className="flex p-1 bg-gray-100 rounded-lg">
                                     <button
@@ -427,6 +508,44 @@ export default function Index({ products, services, categories, mechanics, emplo
                                 </div>
                             </div>
 
+                            {/* Cart Items List */}
+                            <div className="space-y-2">
+                                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Items in Cart</h3>
+                                <div className="bg-gray-50 rounded-xl p-4 space-y-3 max-h-48 overflow-y-auto">
+                                    {cart.map(item => {
+                                        const category = categories.find(c => c.id === item.product.category_id);
+                                        return (
+                                            <div key={item.product.id} className="flex items-start justify-between gap-3 pb-3 border-b border-gray-200 last:border-0 last:pb-0">
+                                                <div className="flex items-start gap-3 flex-1">
+                                                    <div className={`p-1.5 rounded-lg flex-shrink-0 ${item.product.type === 'product' ? 'bg-blue-100 text-blue-600' : 'bg-green-100 text-green-600'}`}>
+                                                        {item.product.type === 'product' ? <Package className="h-4 w-4" /> : <Wrench className="h-4 w-4" />}
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-sm font-semibold text-gray-900 truncate">{item.product.name}</p>
+                                                        <div className="flex items-center gap-2 mt-0.5">
+                                                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${item.product.type === 'product' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
+                                                                {item.product.type === 'product' ? 'Product' : 'Service'}
+                                                            </span>
+                                                            {category && (
+                                                                <span className="text-[10px] font-medium text-gray-500 bg-gray-200 px-2 py-0.5 rounded-full">
+                                                                    {category.name}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <p className="text-xs text-gray-500 mt-1">
+                                                            {formatPrice(item.product.price)} × {item.quantity}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right flex-shrink-0">
+                                                    <p className="text-sm font-bold text-gray-900">{formatPrice(item.product.price * item.quantity)}</p>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
                             <div className="space-y-4">
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-1">
@@ -484,25 +603,43 @@ export default function Index({ products, services, categories, mechanics, emplo
                                 </div>
 
                                 {hasServices && (
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">
-                                            Assigned Mechanic <span className="text-red-500">*</span>
-                                        </label>
-                                        <select
-                                            value={data.mechanic_id}
-                                            onChange={(e) => setData('mechanic_id', e.target.value)}
-                                            className="w-full rounded-lg border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 transition-all"
-                                            required
-                                        >
-                                            <option value="">Select Mechanic</option>
-                                            {mechanics.map(mechanic => (
-                                                <option key={mechanic.id} value={mechanic.id}>
-                                                    {mechanic.name} {mechanic.specialization ? `- ${mechanic.specialization}` : ''}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        {errors.mechanic_id && <p className="text-red-500 text-xs">{errors.mechanic_id}</p>}
-                                    </div>
+                                    <>
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                                Assigned Mechanic <span className="text-red-500">*</span>
+                                            </label>
+                                            <select
+                                                value={data.mechanic_id}
+                                                onChange={(e) => setData('mechanic_id', e.target.value)}
+                                                className="w-full rounded-lg border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 transition-all"
+                                                required
+                                            >
+                                                <option value="">Select Mechanic</option>
+                                                {mechanics.map(mechanic => (
+                                                    <option key={mechanic.id} value={mechanic.id}>
+                                                        {mechanic.name} {mechanic.specialization ? `- ${mechanic.specialization}` : ''}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            {errors.mechanic_id && <p className="text-red-500 text-xs">{errors.mechanic_id}</p>}
+                                        </div>
+
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                                Issue Description <span className="text-red-500">*</span>
+                                            </label>
+                                            <textarea
+                                                value={data.job_description}
+                                                onChange={(e) => setData('job_description', e.target.value)}
+                                                placeholder="Describe the issue or work to be done..."
+                                                rows={3}
+                                                className="w-full rounded-lg border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 transition-all resize-none"
+                                                required
+                                            />
+                                            {errors.job_description && <p className="text-red-500 text-xs">{errors.job_description}</p>}
+                                            <p className="text-xs text-gray-500">This will be used as the job order description</p>
+                                        </div>
+                                    </>
                                 )}
 
                                 <div className="p-4 bg-gray-50 rounded-xl space-y-3">
@@ -518,8 +655,10 @@ export default function Index({ products, services, categories, mechanics, emplo
                                         type="number"
                                         value={data.amount_paid}
                                         onChange={(e) => setData('amount_paid', parseFloat(e.target.value))}
-                                        className="w-full text-right font-mono text-2xl font-bold rounded-lg border-gray-300 focus:ring-green-500 focus:border-green-500"
+                                        className="w-full text-right font-mono text-2xl font-bold rounded-lg border-2 border-gray-300 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 px-4 py-3 shadow-sm hover:border-gray-400 transition-colors"
+                                        placeholder="0.00"
                                         min={cartTotal}
+                                        step="0.01"
                                         required
                                     />
 
