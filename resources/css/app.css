@@ -1,1 +1,45 @@
 @import "tailwindcss";
+
+/* Prevent modal backdrop from transitioning/dimming */
+#modal>div:first-child {
+    transition: none !important;
+}
+
+/* Prevent text selection on landing page for window shopping experience */
+body {
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+/* Allow selection in form inputs */
+input,
+textarea,
+select {
+    user-select: text;
+    -webkit-user-select: text;
+}
+
+@keyframes scroll {
+    0% {
+        transform: translateX(0);
+    }
+
+    100% {
+        transform: translateX(-50%);
+    }
+}
+
+.animate-scroll {
+    animation: scroll 40s linear infinite;
+}
+
+.animate-scroll:hover {
+    animation-play-state: paused;
+}
+
+.mask-gradient {
+    mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+    -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+}

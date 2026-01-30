@@ -30,4 +30,35 @@ class Product extends Model
     {
         return $this->type === 'service';
     }
+
+    /**
+     * Get all sections this product is pinned to
+     */
+    public function sections()
+    {
+        return $this->belongsToMany(ProductSection::class, 'product_section_pins', 'product_id', 'section_id')
+            ->withPivot('branch_id', 'order')
+            ->withTimestamps();
+    }
+
+    /**
+     * Get sections where this product is pinned for a specific branch
+     */
+    public function pinnedInSections($branchId = null)
+    {
+        $query = $this->belongsToMany(ProductSection::class, 'product_section_pins', 'product_id', 'section_id')
+            ->withPivot('branch_id', 'order')
+            ->withTimestamps();
+
+        if ($branchId) {
+            $query->where(function($q) use ($branchId) {
+                $q->wherePivot('branch_id', $branchId)
+                  ->orWherePivotNull('branch_id');
+            });
+        } else {
+            $query->wherePivotNull('branch_id');
+        }
+
+        return $query;
+    }
 }

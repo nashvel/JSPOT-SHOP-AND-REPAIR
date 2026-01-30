@@ -5,13 +5,21 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use App\Models\Branch;
 use App\Models\User;
+use Illuminate\Support\Facades\Hash;
 
 class BranchSeeder extends Seeder
 {
     public function run(): void
     {
-        // Main Branch
-        $mainBranch = Branch::create([
+        // Create user for Main Branch
+        $mainUser = User::create([
+            'name' => 'Main Branch Manager',
+            'email' => 'main.branch@jspot.com',
+            'password' => Hash::make('password'),
+            'role' => 'branch_manager',
+        ]);
+
+        Branch::create([
             'name' => 'Main Branch (Makati)',
             'email' => 'makati@jspot.com',
             'password' => bcrypt('password'),
@@ -20,19 +28,18 @@ class BranchSeeder extends Seeder
             'latitude' => 14.5547,
             'longitude' => 121.0244,
             'is_main' => true,
+            'user_id' => $mainUser->id,
         ]);
 
-        // Create user account for Main Branch
-        User::create([
-            'name' => 'Main Branch (Makati)',
-            'email' => 'makati@jspot.com',
-            'password' => bcrypt('password'),
-            'role' => 'manager', // Use string role field
-            'branch_id' => $mainBranch->id,
+        // Create user for Downtown Branch
+        $downtownUser = User::create([
+            'name' => 'Downtown Branch Manager',
+            'email' => 'downtown.branch@jspot.com',
+            'password' => Hash::make('password'),
+            'role' => 'branch_manager',
         ]);
 
-        // Downtown Branch
-        $downtownBranch = Branch::create([
+        Branch::create([
             'name' => 'Downtown Branch (Manila)',
             'email' => 'manila@jspot.com',
             'password' => bcrypt('password'),
@@ -41,19 +48,18 @@ class BranchSeeder extends Seeder
             'latitude' => 14.5826,
             'longitude' => 120.9787,
             'is_main' => false,
-        ]);
-
-        // Create user account for Downtown Branch
-        User::create([
-            'name' => 'Downtown Branch (Manila)',
-            'email' => 'manila@jspot.com',
-            'password' => bcrypt('password'),
-            'role' => 'manager', // Use string role field
-            'branch_id' => $downtownBranch->id,
+            'user_id' => $downtownUser->id,
         ]);
         
-        // Uptown Branch
-        $uptownBranch = Branch::create([
+        // Create user for Uptown Branch
+        $uptownUser = User::create([
+            'name' => 'Uptown Branch Manager',
+            'email' => 'uptown.branch@jspot.com',
+            'password' => Hash::make('password'),
+            'role' => 'branch_manager',
+        ]);
+
+        Branch::create([
             'name' => 'Uptown Branch (QC)',
             'email' => 'qc@jspot.com',
             'password' => bcrypt('password'),
@@ -62,15 +68,7 @@ class BranchSeeder extends Seeder
             'latitude' => 14.6516,
             'longitude' => 121.0493,
             'is_main' => false,
-        ]);
-
-        // Create user account for Uptown Branch
-        User::create([
-            'name' => 'Uptown Branch (QC)',
-            'email' => 'qc@jspot.com',
-            'password' => bcrypt('password'),
-            'role' => 'manager', // Use string role field
-            'branch_id' => $uptownBranch->id,
+            'user_id' => $uptownUser->id,
         ]);
     }
 }

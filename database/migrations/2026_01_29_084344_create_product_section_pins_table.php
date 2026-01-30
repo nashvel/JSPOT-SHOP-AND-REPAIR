@@ -1,0 +1,34 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('product_section_pins', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('product_id')->constrained()->onDelete('cascade');
+            $table->foreignId('section_id')->references('id')->on('product_sections')->onDelete('cascade');
+            $table->foreignId('branch_id')->nullable()->constrained()->onDelete('cascade');
+            $table->integer('order')->default(0);
+            $table->timestamps();
+
+            // Ensure a product can only be pinned once per section per branch
+            $table->unique(['product_id', 'section_id', 'branch_id']);
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('product_section_pins');
+    }
+};

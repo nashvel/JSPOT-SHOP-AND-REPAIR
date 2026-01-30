@@ -17,6 +17,11 @@ class Branch extends Model
         'is_main' => 'boolean',
     ];
 
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
     public function users()
     {
         return $this->hasMany(User::class);

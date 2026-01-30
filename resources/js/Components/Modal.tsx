@@ -6,18 +6,27 @@ import {
 } from '@headlessui/react';
 import { PropsWithChildren } from 'react';
 
+export interface ModalConfig {
+    backdropBlur?: boolean;
+    themeAccent?: string; // e.g., 'purple', 'blue', 'red'
+}
+
 export default function Modal({
     children,
     show = false,
     maxWidth = '2xl',
     closeable = true,
-    onClose = () => {},
+    onClose = () => { },
+    config = {},
 }: PropsWithChildren<{
     show: boolean;
     maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
     closeable?: boolean;
     onClose: CallableFunction;
+    config?: ModalConfig;
 }>) {
+    const { backdropBlur = true, themeAccent = 'purple' } = config;
+
     const close = () => {
         if (closeable) {
             onClose();
@@ -32,6 +41,9 @@ export default function Modal({
         '2xl': 'sm:max-w-2xl',
     }[maxWidth];
 
+    // Dynamic accent colors for ring/border
+    const accentRingClass = `ring-${themeAccent}-500`;
+
     return (
         <Transition show={show} leave="duration-200">
             <Dialog
@@ -40,6 +52,7 @@ export default function Modal({
                 className="fixed inset-0 z-50 flex items-center justify-center transform overflow-y-auto px-4 py-6 transition-all sm:px-0"
                 onClose={close}
             >
+                {/* Backdrop with optional blur */}
                 <TransitionChild
                     enter="ease-out duration-300"
                     enterFrom="opacity-0"
@@ -51,6 +64,7 @@ export default function Modal({
                     <div className="fixed inset-0 bg-gray-500/75" />
                 </TransitionChild>
 
+                {/* Modal Panel */}
                 <TransitionChild
                     enter="ease-out duration-300"
                     enterFrom="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
@@ -60,7 +74,7 @@ export default function Modal({
                     leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
                 >
                     <DialogPanel
-                        className={`relative mb-6 transform overflow-hidden rounded-lg bg-white shadow-xl transition-all sm:mx-auto sm:w-full ${maxWidthClass}`}
+                        className={`relative z-10 mb-6 transform overflow-hidden rounded-lg bg-white shadow-xl ring-1 ${accentRingClass} transition-all sm:mx-auto sm:w-full ${maxWidthClass}`}
                     >
                         {children}
                     </DialogPanel>
