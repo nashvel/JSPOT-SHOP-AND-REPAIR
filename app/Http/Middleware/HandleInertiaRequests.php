@@ -69,6 +69,11 @@ class HandleInertiaRequests extends Middleware
                 $user->load('menus');
                 $menus = $user->menus->toArray();
             }
+
+            // Filter out 'Users' module (Use generic filtering if needed, for now specific per request)
+            $menus = array_values(array_filter($menus, function ($menu) {
+                return $menu['route'] !== 'admin.users.index';
+            }));
         }
 
         return [

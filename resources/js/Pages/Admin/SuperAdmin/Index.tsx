@@ -1,5 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, useForm, router } from '@inertiajs/react';
 import { Shield, UserPlus, Users, Trash2, Edit, Key } from 'lucide-react';
 import { useState } from 'react';
 import Swal from 'sweetalert2';
@@ -71,7 +71,7 @@ export default function Index({ admins, roles, availableMenus, filters }: Props)
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        
+
         if (editingAdmin) {
             put(route('admin.super-admin.update', editingAdmin.id), {
                 onSuccess: () => {
@@ -103,7 +103,7 @@ export default function Index({ admins, roles, availableMenus, filters }: Props)
             cancelButtonText: 'Cancel',
         }).then((result) => {
             if (result.isConfirmed) {
-                useForm().delete(route('admin.super-admin.destroy', admin.id), {
+                router.delete(route('admin.super-admin.destroy', admin.id), {
                     onSuccess: () => {
                         Swal.fire('Deleted!', 'System Admin deleted successfully', 'success');
                     },
@@ -443,7 +443,7 @@ export default function Index({ admins, roles, availableMenus, filters }: Props)
                     </div>
                 </div>
             )}
-            
+
             {/* Menu Management Modal */}
             {managingMenus && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -458,17 +458,22 @@ export default function Index({ admins, roles, availableMenus, filters }: Props)
                         </div>
 
                         <form onSubmit={handleMenuSubmit} className="flex-1 overflow-y-auto p-6">
-                            <div className="mb-4 flex items-center justify-between">
-                                <button
-                                    type="button"
-                                    onClick={toggleAllMenus}
-                                    className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
-                                >
-                                    {menuData.menus.length === availableMenus.length ? 'Deselect All' : 'Select All'}
-                                </button>
-                                <span className="text-sm text-gray-500">
-                                    {menuData.menus.length} of {availableMenus.length} selected
+                            <div className="mb-4 flex items-center justify-between bg-indigo-50 p-3 rounded-lg border border-indigo-100">
+                                <span className="text-sm font-medium text-indigo-900">
+                                    Quick Actions
                                 </span>
+                                <div className="flex items-center gap-3">
+                                    <span className="text-sm text-gray-500">
+                                        {menuData.menus.length} of {availableMenus.length} selected
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={toggleAllMenus}
+                                        className="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded hover:bg-indigo-700 font-medium transition-colors"
+                                    >
+                                        {menuData.menus.length === availableMenus.length ? 'Deselect All' : 'Allow All Modules'}
+                                    </button>
+                                </div>
                             </div>
 
                             <div className="space-y-6">

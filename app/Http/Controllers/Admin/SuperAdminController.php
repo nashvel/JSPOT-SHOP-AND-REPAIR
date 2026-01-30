@@ -20,21 +20,26 @@ class SuperAdminController extends Controller
             abort(403, 'Unauthorized. Only Super Admins can access this page.');
         }
 
-        $admins = User::with('role', 'menus')
-            ->whereNull('branch_id')
+        $admins = User::with('role', 'menus', 'branch.menus')
             ->whereHas('role', function ($query) {
                 $query->where('name', '!=', 'super_admin');
             })
             ->when($request->search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
-                      ->orWhere('email', 'like', "%{$search}%");
+                        ->orWhere('email', 'like', "%{$search}%");
                 });
             })
-            ->withCount('menus')
             ->orderBy('created_at', 'desc')
             ->paginate(15)
-            ->withQueryString();
+            ->withQueryString()
+            ->through(function ($user) {
+                $branchMenus = $user->branch ? $user->branch->menus : collect([]);
+                $userMenus = $user->menus ?: collect([]);
+                // Calculate effective unique menus
+                $user->menus_count = $branchMenus->merge($userMenus)->unique('id')->count();
+                return $user;
+            });
 
         // Get all roles from database (exclude super_admin)
         $roles = \App\Models\Role::where('name', '!=', 'super_admin')
