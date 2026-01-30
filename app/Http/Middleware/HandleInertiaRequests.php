@@ -32,8 +32,7 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         $user = $request->user();
-        $impersonatingBranchId = $request->session()->get('impersonating_branch_id');
-        $impersonatingBranchName = $request->session()->get('impersonating_branch_name');
+        $impersonatorId = $request->session()->get('impersonator_id');
 
         // Active branch context - used for filtering data in controllers
         $activeBranchId = null;
@@ -45,22 +44,14 @@ class HandleInertiaRequests extends Middleware
         if ($user) {
             // Load role relationship for all users
             $user->load('role');
-            
+
             // Check if user is system admin (no branch_id)
+            // If checking impersonation, we treat the logged in user as the source of truth, 
+            // but we flag that they are being impersonated.
             $isSystemAdmin = !$user->branch_id;
 
-            if ($impersonatingBranchId) {
-                // System admin is impersonating a branch
-                $branch = Branch::with('menus')->find($impersonatingBranchId);
-                $menus = $branch ? $branch->menus->toArray() : [];
-                $activeBranchId = $impersonatingBranchId;
-                $activeBranchName = $impersonatingBranchName;
-
-                // Menus are already loaded from the branch relationship
-                // No need to merge admin menus to keep the view authentic to the branch
-
-            } elseif ($user->branch_id) {
-                // Branch account or staff
+            if ($user->branch_id) {
+                // Branch account or staff (native or impersonated)
                 $user->load(['branch.menus', 'menus']);
 
                 // Prioritize user-specific menus if assigned, otherwise fall back to branch menus
@@ -92,9 +83,10 @@ class HandleInertiaRequests extends Middleware
                 'name' => $activeBranchName,
             ],
             'impersonating' => [
-                'active' => $impersonatingBranchId !== null,
-                'branch_id' => $impersonatingBranchId,
-                'branch_name' => $impersonatingBranchName,
+                'active' => $impersonatorId !== null,
+                'branch_id' => $activeBranchId,
+                'branch_name' => $activeBranchName,
+                'user_name' => $user->name ?? null,
             ],
             'flash' => [
                 'success' => fn() => $request->session()->get('success'),

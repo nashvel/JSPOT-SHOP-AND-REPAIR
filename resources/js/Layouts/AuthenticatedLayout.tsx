@@ -52,15 +52,21 @@ export default function Authenticated({
             {/* Sidebar */}
             <div className="w-64 border-r border-gray-200 bg-white flex flex-col">
                 {/* Impersonation Banner */}
+                {/* Impersonation Banner */}
                 {impersonating?.active && (
                     <div className="bg-amber-500 text-white px-4 py-2 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <Store className="h-4 w-4" />
-                            <span className="font-medium text-sm truncate">{impersonating.branch_name}</span>
+                        <div className="flex items-center gap-2 overflow-hidden">
+                            <Store className="h-4 w-4 flex-shrink-0" />
+                            <div className="flex flex-col min-w-0">
+                                <span className="font-bold text-xs uppercase tracking-wider">Impersonating</span>
+                                <span className="font-medium text-sm truncate" title={`${impersonating.user_name} (${impersonating.branch_name})`}>
+                                    {impersonating.user_name} ({impersonating.branch_name})
+                                </span>
+                            </div>
                         </div>
                         <button
                             onClick={handleExitImpersonation}
-                            className="flex items-center gap-1 text-xs bg-amber-600 hover:bg-amber-700 px-2 py-1 rounded"
+                            className="flex items-center gap-1 text-xs bg-amber-600 hover:bg-amber-700 px-3 py-1.5 rounded transition-colors flex-shrink-0 ml-2"
                         >
                             <XCircle className="h-3 w-3" />
                             Exit

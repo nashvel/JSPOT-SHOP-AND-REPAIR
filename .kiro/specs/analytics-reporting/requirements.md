@@ -14,7 +14,7 @@ A comprehensive analytics and reporting system that provides business insights t
   - Show comparison with previous period (e.g., this month vs last month)
   - Display total revenue, profit, and number of transactions
   - Filter by date range
-  - Filter by branch (for system admin)
+  - **Branch filtering**: System admin sees dropdown to filter by branch; branch users see only their branch data automatically
 
 **US-1.2: As a shop owner, I want to see best-selling products and services so that I can optimize inventory and pricing**
 - Acceptance Criteria:
@@ -28,17 +28,19 @@ A comprehensive analytics and reporting system that provides business insights t
 - Acceptance Criteria:
   - Display profit margin percentage for each product/service
   - Show cost vs selling price comparison
-  - Highlight items with margins below threshold (e.g., <20%)
+  - Highlight items with margins below threshold (e.g., <20%
   - Calculate overall profit margin
   - Sort by margin percentage
 
 **US-1.4: As a system admin, I want to compare branch performance so that I can identify top and underperforming locations**
 - Acceptance Criteria:
+  - **System Admin Only**: This report is only visible to system admin
   - Display revenue comparison across all branches
   - Show number of transactions per branch
   - Display average transaction value per branch
   - Include visual comparison charts
   - Filter by date range
+  - Branch users do not see this report (hidden from menu)
 
 ### Mechanic Performance Reports
 
@@ -123,9 +125,12 @@ A comprehensive analytics and reporting system that provides business insights t
 - Cache frequently accessed reports
 - Optimize database queries with indexes
 
-### Security
-- Branch users can only view their branch data
-- System admin can view all branches
+### Security & Data Access
+- **Branch Users**: Automatically see only their branch data (no dropdown needed)
+- **System Admin**: See all branches by default, with dropdown filter to view specific branch
+- Branch filtering pattern (same as existing modules):
+  - Branch users: `where('branch_id', $user->branch_id)`
+  - System admin: Optional filter `when($request->branch_id, ...)`
 - Sensitive financial data requires authentication
 - Audit trail for report access
 
@@ -168,7 +173,4 @@ A comprehensive analytics and reporting system that provides business insights t
 - Mobile app for analytics
 
 ## Success Metrics
-- 80% of managers use analytics weekly
-- 50% reduction in stockouts
-- 20% improvement in profit margins
-- Faster decision-making on inventory and staffing
+- 80% of managers use analytics weeklye 
