@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Branch;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SaleItem;
@@ -14,7 +15,17 @@ class SaleController extends Controller
 {
     public function index(Request $request)
     {
+        $user = auth()->user();
+
         $sales = Sale::with(['user', 'branch', 'items'])
+            // Filter by branch if user belongs to a branch
+            ->when($user->branch_id, function ($query) use ($user) {
+                $query->where('branch_id', $user->branch_id);
+            })
+            // System Admin: filter by selected branch if provided
+            ->when(!$user->branch_id && $request->branch_id, function ($query) use ($request) {
+                $query->where('branch_id', $request->branch_id);
+            })
             ->when($request->search, function ($query, $search) {
                 $query->where('sale_number', 'like', "%{$search}%")
                     ->orWhere('customer_name', 'like', "%{$search}%")
@@ -26,13 +37,23 @@ class SaleController extends Controller
             ->when($request->payment_method, function ($query, $method) {
                 $query->where('payment_method', $method);
             })
+            ->when($request->start_date, function ($query, $startDate) {
+                $query->whereDate('created_at', '>=', $startDate);
+            })
+            ->when($request->end_date, function ($query, $endDate) {
+                $query->whereDate('created_at', '<=', $endDate);
+            })
             ->orderBy('created_at', 'desc')
             ->paginate(15)
             ->withQueryString();
 
+        $branches = Branch::all();
+
         return Inertia::render('Admin/Sales/Index', [
             'sales' => $sales,
-            'filters' => $request->only(['search', 'status', 'payment_method']),
+            'branches' => $branches,
+            'filters' => $request->only(['search', 'status', 'payment_method', 'start_date', 'end_date', 'branch_id']),
+            'userBranchId' => $user->branch_id,
         ]);
     }
 
@@ -51,12 +72,24 @@ class SaleController extends Controller
                     }
                 ])->get();
 
-        // Get all services (no stock needed)
-        $services = Product::where('type', 'service')->get();
+        // Get services assigned to this branch
+        $services = Product::where('type', 'service')
+            ->whereHas('branches', function ($query) use ($user) {
+                $query->where('branch_id', $user->branch_id);
+            })->get();
+
+        $categories = \App\Models\Category::all();
+
+        // Get active mechanics for the branch
+        $mechanics = \App\Models\Mechanic::where('branch_id', $user->branch_id)
+            ->where('is_active', true)
+            ->get();
 
         return Inertia::render('Admin/POS/Index', [
             'products' => $products,
             'services' => $services,
+            'categories' => $categories,
+            'mechanics' => $mechanics,
             'employee' => $user->only(['id', 'name']),
         ]);
     }
@@ -67,6 +100,7 @@ class SaleController extends Controller
             'customer_name' => 'required|string|max:255',
             'contact_number' => 'required|string|max:20',
             'employee_name' => 'required|string|max:255',
+            'mechanic_id' => 'nullable|exists:mechanics,id',
             'engine_number' => 'required|string|max:100',
             'chassis_number' => 'required|string|max:100',
             'plate_number' => 'required|string|max:20',
@@ -80,13 +114,24 @@ class SaleController extends Controller
 
         $user = auth()->user();
 
-        return DB::transaction(function () use ($validated, $user) {
-            // Calculate totals
+        return DB::transaction(function () use ($validated, $user, $request) {
+            // Calculate totals and check for services
             $subtotal = 0;
             $itemsData = [];
+            $hasServices = false;
+            $serviceItems = [];
+            $productItems = [];
 
             foreach ($validated['items'] as $item) {
                 $product = Product::findOrFail($item['product_id']);
+
+                if ($product->type === 'service') {
+                    $hasServices = true;
+                    $serviceItems[] = [
+                        'product' => $product,
+                        'quantity' => $item['quantity'],
+                    ];
+                }
 
                 // Only check stock for products, not services
                 if ($product->type === 'product') {
@@ -97,6 +142,11 @@ class SaleController extends Controller
                     if (!$branchProduct || $branchProduct->pivot->stock_quantity < $item['quantity']) {
                         throw new \Exception("Insufficient stock for {$product->name}");
                     }
+
+                    $productItems[] = [
+                        'product' => $product,
+                        'quantity' => $item['quantity'],
+                    ];
                 }
 
                 $itemTotal = $product->price * $item['quantity'];
@@ -105,6 +155,7 @@ class SaleController extends Controller
                 $itemsData[] = [
                     'product_id' => $product->id,
                     'product_name' => $product->name,
+                    'product_type' => $product->type,
                     'quantity' => $item['quantity'],
                     'unit_price' => $product->price,
                     'total' => $itemTotal,
@@ -126,6 +177,7 @@ class SaleController extends Controller
                 'sale_number' => Sale::generateSaleNumber(),
                 'branch_id' => $user->branch_id,
                 'user_id' => $user->id,
+                'mechanic_id' => $validated['mechanic_id'] ?? null,
                 'customer_name' => $validated['customer_name'],
                 'contact_number' => $validated['contact_number'],
                 'employee_name' => $validated['employee_name'],
@@ -147,8 +199,60 @@ class SaleController extends Controller
                 $sale->items()->create($itemData);
             }
 
+            // If there are services, create a job order
+            if ($hasServices && $validated['mechanic_id']) {
+                $serviceDescription = collect($serviceItems)->map(function ($item) {
+                    return "{$item['product']->name} (x{$item['quantity']})";
+                })->join(', ');
+
+                $laborCost = collect($serviceItems)->sum(function ($item) {
+                    return $item['product']->price * $item['quantity'];
+                });
+
+                $partsCost = collect($productItems)->sum(function ($item) {
+                    return $item['product']->price * $item['quantity'];
+                });
+
+                $jobOrder = \App\Models\JobOrder::create([
+                    'tracking_code' => \App\Models\JobOrder::generateTrackingCode(),
+                    'branch_id' => $user->branch_id,
+                    'sale_id' => $sale->id,
+                    'mechanic_id' => $validated['mechanic_id'],
+                    'customer_name' => $validated['customer_name'],
+                    'contact_number' => $validated['contact_number'],
+                    'vehicle_details' => "Plate: {$validated['plate_number']}",
+                    'engine_number' => $validated['engine_number'],
+                    'chassis_number' => $validated['chassis_number'],
+                    'plate_number' => $validated['plate_number'],
+                    'description' => "Services: {$serviceDescription}",
+                    'labor_cost' => $laborCost,
+                    'parts_cost' => $partsCost,
+                    'total_cost' => $laborCost + $partsCost,
+                    'status' => 'pending',
+                ]);
+
+                // Add labor earnings to mechanic
+                $mechanic = \App\Models\Mechanic::find($validated['mechanic_id']);
+                if ($mechanic) {
+                    $mechanic->addLaborEarnings($laborCost);
+                }
+
+                // Add purchased products as parts to job order
+                foreach ($productItems as $productItem) {
+                    \App\Models\JobOrderPart::create([
+                        'job_order_id' => $jobOrder->id,
+                        'product_id' => $productItem['product']->id,
+                        'part_name' => $productItem['product']->name,
+                        'quantity' => $productItem['quantity'],
+                        'unit_price' => $productItem['product']->price,
+                        'total_price' => $productItem['product']->price * $productItem['quantity'],
+                        'source' => 'purchased',
+                    ]);
+                }
+            }
+
             return redirect()->route('admin.sales.show', $sale)
-                ->with('success', 'Sale completed successfully!');
+                ->with('success', 'Sale completed successfully!' . ($hasServices ? ' Job order created.' : ''));
         });
     }
 

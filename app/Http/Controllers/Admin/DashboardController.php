@@ -3,68 +3,136 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Branch;
+use App\Models\JobOrder;
+use App\Models\Product;
+use App\Models\Sale;
+use App\Models\SaleItem;
+use App\Models\Setting;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
 
 class DashboardController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        // KPI Cards
-        $totalRevenue = 1250000; // Mocked for now (in real app: Order::sum('total'))
-        $totalOrders = \App\Models\JobOrder::count(); // Using Job Orders as proxies for sales for now
-        $totalProducts = \App\Models\Product::count();
-        $totalBranches = \App\Models\Branch::count();
+        $user = Auth::user();
 
-        // 1. Revenue Trend (Area Chart)
-        $revenueTrend = [
-            ['name' => 'Mon', 'revenue' => 4000, 'orders' => 24],
-            ['name' => 'Tue', 'revenue' => 3000, 'orders' => 13],
-            ['name' => 'Wed', 'revenue' => 2000, 'orders' => 98],
-            ['name' => 'Thu', 'revenue' => 2780, 'orders' => 39],
-            ['name' => 'Fri', 'revenue' => 1890, 'orders' => 48],
-            ['name' => 'Sat', 'revenue' => 2390, 'orders' => 38],
-            ['name' => 'Sun', 'revenue' => 3490, 'orders' => 43],
-        ];
+        // Determine branch filter
+        // System Admin (no branch_id) can filter by any branch or see all
+        // Branch users are locked to their own branch
+        $selectedBranchId = null;
+        $canFilterBranches = $user->branch_id === null; // System admin
 
-        // 2. Top Products (Bar Chart)
-        $topProducts = \App\Models\Product::withCount('branches') // Mocking "popularity" by availability for now
-            ->orderBy('branches_count', 'desc')
+        if ($canFilterBranches) {
+            $selectedBranchId = $request->query('branch') ?: null;
+        } else {
+            $selectedBranchId = $user->branch_id;
+        }
+
+        // Build base queries with branch filter
+        $salesQuery = Sale::query();
+        $jobOrdersQuery = JobOrder::query();
+        $productsQuery = Product::query();
+
+        if ($selectedBranchId) {
+            $salesQuery->where('branch_id', $selectedBranchId);
+            $jobOrdersQuery->where('branch_id', $selectedBranchId);
+            // Products are branch-scoped via pivot
+            $productsQuery->whereHas('branches', fn($q) => $q->where('branches.id', $selectedBranchId));
+        }
+
+        // KPI Cards - Real Data
+        $totalRevenue = (clone $salesQuery)->sum('total') ?? 0;
+        $totalOrders = (clone $salesQuery)->count();
+        $totalJobOrders = (clone $jobOrdersQuery)->count();
+        $totalProducts = (clone $productsQuery)->count();
+        $totalBranches = $canFilterBranches ? Branch::count() : 1;
+
+        // Revenue Trend (Last 7 days)
+        $revenueTrend = Sale::query()
+            ->when($selectedBranchId, fn($q) => $q->where('branch_id', $selectedBranchId))
+            ->where('created_at', '>=', now()->subDays(6)->startOfDay())
+            ->select(
+                DB::raw('DATE(created_at) as date'),
+                DB::raw('SUM(total) as revenue'),
+                DB::raw('COUNT(*) as orders')
+            )
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get()
+            ->map(fn($row) => [
+                'name' => \Carbon\Carbon::parse($row->date)->format('D'),
+                'revenue' => (float) $row->revenue,
+                'orders' => (int) $row->orders,
+            ]);
+
+        // Fill in missing days with zero values
+        $last7Days = collect(range(6, 0))->map(fn($i) => [
+            'name' => now()->subDays($i)->format('D'),
+            'revenue' => 0,
+            'orders' => 0,
+        ]);
+
+        $revenueTrend = $last7Days->map(function ($day) use ($revenueTrend) {
+            $found = $revenueTrend->firstWhere('name', $day['name']);
+            return $found ?: $day;
+        });
+
+        // Top Products by Sales Quantity
+        $topProducts = SaleItem::query()
+            ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+            ->join('products', 'sale_items.product_id', '=', 'products.id')
+            ->when($selectedBranchId, fn($q) => $q->where('sales.branch_id', $selectedBranchId))
+            ->select('products.name', DB::raw('SUM(sale_items.quantity) as total_quantity'))
+            ->whereNotNull('sale_items.product_id')
+            ->groupBy('products.id', 'products.name')
+            ->orderByDesc('total_quantity')
             ->take(5)
             ->get()
-            ->map(function($p) {
-                return ['name' => $p->name, 'sales' => rand(50, 200)];
-            });
+            ->map(fn($row) => ['name' => $row->name, 'sales' => (int) $row->total_quantity]);
 
-        // 3. Branch Performance (Pie Chart)
-        $branchDistribution = \App\Models\Branch::withCount('products') // Mocking activity by inventory size
-            ->get()
-            ->map(function($b) {
-                return ['name' => $b->name, 'value' => $b->products_count + rand(10, 50)];
-            });
+        // Branch Distribution (Pie Chart) - Only for admin
+        $branchDistribution = collect();
+        if ($canFilterBranches && !$selectedBranchId) {
+            $branchDistribution = Sale::query()
+                ->join('branches', 'sales.branch_id', '=', 'branches.id')
+                ->select('branches.name', DB::raw('SUM(sales.total) as value'))
+                ->groupBy('branches.id', 'branches.name')
+                ->get()
+                ->map(fn($row) => ['name' => $row->name, 'value' => (float) $row->value]);
+        }
 
-        // 4. Revenue Goal
-        $timeframe = request('timeframe', 'monthly');
-        
-        // Fetch goals from DB or fallback
+        // Revenue Goal
+        $timeframe = $request->query('timeframe', 'monthly');
         $goals = [
-            'daily' => \App\Models\Setting::where('key', 'revenue_goal_daily')->value('value') ?? 5000,
-            'monthly' => \App\Models\Setting::where('key', 'revenue_goal_monthly')->value('value') ?? 150000,
-            'yearly' => \App\Models\Setting::where('key', 'revenue_goal_yearly')->value('value') ?? 2000000,
+            'daily' => Setting::where('key', 'revenue_goal_daily')->value('value') ?? 5000,
+            'monthly' => Setting::where('key', 'revenue_goal_monthly')->value('value') ?? 150000,
+            'yearly' => Setting::where('key', 'revenue_goal_yearly')->value('value') ?? 2000000,
         ];
         $currentGoal = (int) ($goals[$timeframe] ?? 150000);
-        
-        // Mock current revenue based on timeframe
-        $currentRevenue = match($timeframe) {
-            'daily' => 4500,
-            'monthly' => 125000,
-            'yearly' => 1100000,
-            default => 125000
+
+        // Real current revenue based on timeframe
+        $currentRevenueQuery = Sale::query()
+            ->when($selectedBranchId, fn($q) => $q->where('branch_id', $selectedBranchId));
+
+        $currentRevenue = match ($timeframe) {
+            'daily' => (float) (clone $currentRevenueQuery)->whereDate('created_at', today())->sum('total'),
+            'monthly' => (float) (clone $currentRevenueQuery)->whereMonth('created_at', now()->month)->whereYear('created_at', now()->year)->sum('total'),
+            'yearly' => (float) (clone $currentRevenueQuery)->whereYear('created_at', now()->year)->sum('total'),
+            default => (float) (clone $currentRevenueQuery)->whereMonth('created_at', now()->month)->sum('total'),
         };
 
-        return \Inertia\Inertia::render('Admin/Dashboard', [
+        // Branches list for dropdown (admin only)
+        $branches = $canFilterBranches ? Branch::select('id', 'name')->get() : collect();
+
+        return Inertia::render('Admin/Dashboard', [
             'stats' => [
                 'revenue' => $totalRevenue,
                 'orders' => $totalOrders,
+                'jobOrders' => $totalJobOrders,
                 'products' => $totalProducts,
                 'branches' => $totalBranches,
             ],
@@ -72,13 +140,17 @@ class DashboardController extends Controller
                 'timeframe' => $timeframe,
                 'target' => $currentGoal,
                 'current' => $currentRevenue,
-                'percentage' => round(($currentRevenue / $currentGoal) * 100),
+                'percentage' => $currentGoal > 0 ? round(($currentRevenue / $currentGoal) * 100) : 0,
             ],
             'charts' => [
                 'revenue' => $revenueTrend,
                 'topProducts' => $topProducts,
                 'branchDistribution' => $branchDistribution,
-            ]
+            ],
+            // Branch filter data
+            'branches' => $branches,
+            'selectedBranch' => $selectedBranchId,
+            'canFilterBranches' => $canFilterBranches,
         ]);
     }
 
@@ -89,7 +161,7 @@ class DashboardController extends Controller
             'target' => 'required|integer|min:1'
         ]);
 
-        \App\Models\Setting::updateOrCreate(
+        Setting::updateOrCreate(
             ['key' => 'revenue_goal_' . $request->timeframe],
             ['value' => $request->target, 'type' => 'integer']
         );

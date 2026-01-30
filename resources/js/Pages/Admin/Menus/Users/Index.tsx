@@ -46,7 +46,7 @@ export default function Index({ users }: { users: User[] }) {
                                                 {user.email}
                                             </td>
                                             <td className="whitespace-nowrap px-6 py-4 capitalize text-gray-500">
-                                                {user.role.replace('_', ' ')}
+                                                {user.role?.display_name || 'N/A'}
                                             </td>
                                             <td className="whitespace-nowrap px-6 py-4 text-right">
                                                 <Link

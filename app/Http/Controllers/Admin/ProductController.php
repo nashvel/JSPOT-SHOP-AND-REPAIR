@@ -12,7 +12,25 @@ class ProductController extends Controller
 {
     public function index(Request $request)
     {
-        $products = Product::with(['branches'])
+        $user = auth()->user();
+
+        $productsQuery = Product::with(['branches', 'category']);
+
+        // If user has a branch, only show products/services assigned to their branch
+        if ($user->branch_id) {
+            $productsQuery->whereHas('branches', function ($q) use ($user) {
+                $q->where('branch_id', $user->branch_id);
+            });
+        } else {
+            // System Admin: filter by selected branch if provided
+            if ($request->branch_id) {
+                $productsQuery->whereHas('branches', function ($q) use ($request) {
+                    $q->where('branch_id', $request->branch_id);
+                });
+            }
+        }
+
+        $products = $productsQuery
             ->when($request->search, function ($query, $search) {
                 $query->where('name', 'like', "%{$search}%")
                     ->orWhere('sku', 'like', "%{$search}%");
@@ -20,12 +38,33 @@ class ProductController extends Controller
             ->when($request->type, function ($query, $type) {
                 $query->where('type', $type);
             })
+            ->latest()
             ->paginate(10)
             ->withQueryString();
 
+        // Filter branch stock to show relevant branch
+        if ($user->branch_id) {
+            $products->getCollection()->transform(function ($product) use ($user) {
+                $product->setRelation('branches', $product->branches->where('id', $user->branch_id));
+                return $product;
+            });
+        } elseif ($request->branch_id) {
+            // System Admin viewing specific branch
+            $products->getCollection()->transform(function ($product) use ($request) {
+                $product->setRelation('branches', $product->branches->where('id', $request->branch_id));
+                return $product;
+            });
+        }
+
+        $branches = Branch::all();
+        $categories = \App\Models\Category::all();
+
         return Inertia::render('Admin/Products/Index', [
             'products' => $products,
-            'filters' => $request->only(['search', 'type']),
+            'categories' => $categories,
+            'branches' => $branches,
+            'filters' => $request->only(['search', 'type', 'branch_id']),
+            'userBranchId' => $user->branch_id,
         ]);
     }
 
@@ -37,14 +76,24 @@ class ProductController extends Controller
             'description' => 'nullable|string',
             'sku' => 'nullable|string|unique:products',
             'price' => 'required|numeric|min:0',
+            'cost' => 'required|numeric|min:0',
+            'category_id' => 'nullable|exists:categories,id',
         ]);
 
+        $user = auth()->user();
         $product = Product::create($validated);
 
-        // Only assign to branches with stock if it's a product (not service)
-        if ($validated['type'] === 'product') {
+        // Assign to branches (both products and services)
+        // Services use stock_quantity = 0 (not tracked)
+        if ($user->branch_id) {
+            // Branch user: only assign to their branch
+            $product->branches()->attach($user->branch_id, ['stock_quantity' => 0]);
+        } else {
+            // System admin: assign to all branches
             $branchIds = Branch::pluck('id');
-            $product->branches()->attach($branchIds, ['stock_quantity' => 0]);
+            foreach ($branchIds as $branchId) {
+                $product->branches()->attach($branchId, ['stock_quantity' => 0]);
+            }
         }
 
         $typeName = $validated['type'] === 'product' ? 'Product' : 'Service';
@@ -58,6 +107,8 @@ class ProductController extends Controller
             'description' => 'nullable|string',
             'sku' => 'nullable|string|unique:products,sku,' . $product->id,
             'price' => 'required|numeric|min:0',
+            'cost' => 'required|numeric|min:0',
+            'category_id' => 'nullable|exists:categories,id',
         ]);
 
         // Don't allow changing type after creation

@@ -1,7 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, usePage, useForm, router } from '@inertiajs/react';
 import { useState } from 'react';
-import { Search, Plus, Minus, Trash2, Package, AlertTriangle } from 'lucide-react';
+import { Search, Plus, Minus, Trash2, Package, AlertTriangle, Edit2 } from 'lucide-react';
 import Modal from '@/Components/Modal';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
@@ -19,6 +19,10 @@ interface Product {
     name: string;
     sku: string;
     price: number;
+    cost: number;
+    description: string | null;
+    category_id: number | null;
+    category: { id: number; name: string } | null;
     branches: Branch[];
 }
 
@@ -31,13 +35,15 @@ interface Props {
         links: any[];
     };
     branches: { id: number; name: string }[];
-    filters: { search?: string };
+    categories: { id: number; name: string; type: string }[];
+    filters: { search?: string; branch_id?: number };
     userBranchId: number | null;
 }
 
-export default function Index({ products, branches, filters, userBranchId }: Props) {
+export default function Index({ products, branches, categories, filters, userBranchId }: Props) {
     const { flash } = usePage().props as any;
     const [search, setSearch] = useState(filters.search || '');
+    const [branchId, setBranchId] = useState(filters.branch_id || '');
     const [adjustModal, setAdjustModal] = useState(false);
     const [deleteModal, setDeleteModal] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -51,9 +57,24 @@ export default function Index({ products, branches, filters, userBranchId }: Pro
 
     const { delete: destroy, processing: deleteProcessing } = useForm({});
 
+    const [editModal, setEditModal] = useState(false);
+    const editForm = useForm({
+        name: '',
+        sku: '',
+        price: '',
+        cost: '',
+        category_id: '',
+        description: '',
+    });
+
     const handleSearch = (e: any) => {
         setSearch(e.target.value);
-        router.get(route('admin.stocks.index'), { search: e.target.value }, { preserveState: true, replace: true });
+        router.get(route('admin.stocks.index'), { search: e.target.value, branch_id: branchId }, { preserveState: true, replace: true });
+    };
+
+    const handleBranchFilter = (branch: string) => {
+        setBranchId(branch);
+        router.get(route('admin.stocks.index'), { search, branch_id: branch }, { preserveState: true, replace: true });
     };
 
     const openAdjustModal = (product: Product, type: 'add' | 'subtract') => {
@@ -65,6 +86,30 @@ export default function Index({ products, branches, filters, userBranchId }: Pro
             reason: '',
         });
         setAdjustModal(true);
+    };
+
+    const openEditModal = (product: any) => {
+        setSelectedProduct(product);
+        editForm.setData({
+            name: product.name,
+            sku: product.sku || '',
+            price: product.price,
+            cost: product.cost || '',
+            category_id: product.category_id || '',
+            description: product.description || '',
+        });
+        setEditModal(true);
+    };
+
+    const handleEdit = (e: any) => {
+        e.preventDefault();
+        if (!selectedProduct) return;
+        editForm.put(route('admin.products.update', selectedProduct.id), {
+            onSuccess: () => {
+                setEditModal(false);
+                setSelectedProduct(null);
+            },
+        });
     };
 
     const openDeleteModal = (product: Product) => {
@@ -131,15 +176,30 @@ export default function Index({ products, branches, filters, userBranchId }: Pro
                                     {userBranchId && <span className="text-indigo-600 font-medium"> (Showing your branch)</span>}
                                 </p>
                             </div>
-                            <div className="relative w-full md:w-64">
-                                <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-                                <input
-                                    type="text"
-                                    placeholder="Search products..."
-                                    value={search}
-                                    onChange={handleSearch}
-                                    className="pl-9 w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                                />
+                            <div className="flex gap-2 w-full md:w-auto">
+                                <div className="relative flex-1 md:w-64">
+                                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                                    <input
+                                        type="text"
+                                        placeholder="Search products..."
+                                        value={search}
+                                        onChange={handleSearch}
+                                        className="pl-9 w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                                    />
+                                </div>
+                                {/* Branch Filter (System Admin Only) */}
+                                {!userBranchId && (
+                                    <select
+                                        value={branchId}
+                                        onChange={(e) => handleBranchFilter(e.target.value)}
+                                        className="rounded-lg border-gray-300 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                                    >
+                                        <option value="">All Branches</option>
+                                        {branches?.map((branch) => (
+                                            <option key={branch.id} value={branch.id}>{branch.name}</option>
+                                        ))}
+                                    </select>
+                                )}
                             </div>
                         </div>
 
@@ -149,7 +209,9 @@ export default function Index({ products, branches, filters, userBranchId }: Pro
                                 <thead className="bg-gray-50">
                                     <tr>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SKU</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cost</th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
                                         <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -173,7 +235,13 @@ export default function Index({ products, branches, filters, userBranchId }: Pro
                                                         </div>
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                        {product.category?.name || '—'}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                                         {product.sku || '—'}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                        ₱{Number(product.cost || 0).toLocaleString()}
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
                                                         ₱{Number(product.price).toLocaleString()}
@@ -199,6 +267,14 @@ export default function Index({ products, branches, filters, userBranchId }: Pro
                                                     <td className="px-6 py-4 whitespace-nowrap text-right">
                                                         <div className="flex justify-end gap-1">
                                                             <button
+                                                                onClick={() => openEditModal(product)}
+                                                                className="p-2 text-indigo-600 hover:bg-indigo-100 rounded-lg transition"
+                                                                title="Edit Details"
+                                                            >
+                                                                <Edit2 className="h-4 w-4" />
+                                                            </button>
+                                                            <div className="w-px h-4 bg-gray-300 mx-1 self-center"></div>
+                                                            <button
                                                                 onClick={() => openAdjustModal(product, 'add')}
                                                                 className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition"
                                                                 title="Add Stock"
@@ -212,6 +288,7 @@ export default function Index({ products, branches, filters, userBranchId }: Pro
                                                             >
                                                                 <Minus className="h-4 w-4" />
                                                             </button>
+                                                            <div className="w-px h-4 bg-gray-300 mx-1 self-center"></div>
                                                             <button
                                                                 onClick={() => openDeleteModal(product)}
                                                                 className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition"
@@ -226,7 +303,7 @@ export default function Index({ products, branches, filters, userBranchId }: Pro
                                         })
                                     ) : (
                                         <tr>
-                                            <td colSpan={5} className="px-6 py-4 text-center text-gray-500 text-sm">
+                                            <td colSpan={7} className="px-6 py-4 text-center text-gray-500 text-sm">
                                                 No products found. Only products (not services) appear here.
                                             </td>
                                         </tr>
@@ -257,6 +334,102 @@ export default function Index({ products, branches, filters, userBranchId }: Pro
                     </div>
                 </div>
             </div>
+
+            {/* Edit Product Modal */}
+            <Modal show={editModal} onClose={() => setEditModal(false)}>
+                <div className="p-6">
+                    <h2 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
+                        <Edit2 className="h-5 w-5 text-indigo-600" /> Edit Product Details
+                    </h2>
+                    <form onSubmit={handleEdit} className="space-y-4">
+                        <div>
+                            <InputLabel htmlFor="edit_name" value="Name" />
+                            <TextInput
+                                id="edit_name"
+                                value={editForm.data.name}
+                                onChange={(e) => editForm.setData('name', e.target.value)}
+                                className="mt-1 block w-full"
+                                required
+                            />
+                            {editForm.errors.name && <div className="text-red-500 text-xs mt-1">{editForm.errors.name}</div>}
+                        </div>
+
+                        <div>
+                            <InputLabel htmlFor="edit_category" value="Category" />
+                            <select
+                                id="edit_category"
+                                value={editForm.data.category_id}
+                                onChange={(e) => editForm.setData('category_id', e.target.value)}
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                            >
+                                <option value="">Select Category</option>
+                                {categories?.filter((c: any) => c.type === 'product').map((c: any) => (
+                                    <option key={c.id} value={c.id}>{c.name}</option>
+                                ))}
+                            </select>
+                            {editForm.errors.category_id && <div className="text-red-500 text-xs mt-1">{editForm.errors.category_id}</div>}
+                        </div>
+
+                        <div>
+                            <InputLabel htmlFor="edit_description" value="Description" />
+                            <textarea
+                                id="edit_description"
+                                value={editForm.data.description}
+                                onChange={(e) => editForm.setData('description', e.target.value)}
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                rows={2}
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <InputLabel htmlFor="edit_sku" value="SKU" />
+                                <TextInput
+                                    id="edit_sku"
+                                    value={editForm.data.sku}
+                                    onChange={(e) => editForm.setData('sku', e.target.value)}
+                                    className="mt-1 block w-full"
+                                />
+                                {editForm.errors.sku && <div className="text-red-500 text-xs mt-1">{editForm.errors.sku}</div>}
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <InputLabel htmlFor="edit_cost" value="Cost (PHP)" />
+                                <TextInput
+                                    id="edit_cost"
+                                    type="number"
+                                    value={editForm.data.cost}
+                                    onChange={(e) => editForm.setData('cost', e.target.value)}
+                                    className="mt-1 block w-full"
+                                    required
+                                />
+                                {editForm.errors.cost && <div className="text-red-500 text-xs mt-1">{editForm.errors.cost}</div>}
+                            </div>
+                            <div>
+                                <InputLabel htmlFor="edit_price" value="Price (PHP)" />
+                                <TextInput
+                                    id="edit_price"
+                                    type="number"
+                                    value={editForm.data.price}
+                                    onChange={(e) => editForm.setData('price', e.target.value)}
+                                    className="mt-1 block w-full"
+                                    required
+                                />
+                                {editForm.errors.price && <div className="text-red-500 text-xs mt-1">{editForm.errors.price}</div>}
+                            </div>
+                        </div>
+
+                        <div className="mt-6 flex justify-end gap-3">
+                            <SecondaryButton onClick={() => setEditModal(false)}>Cancel</SecondaryButton>
+                            <PrimaryButton disabled={editForm.processing}>
+                                Save Changes
+                            </PrimaryButton>
+                        </div>
+                    </form>
+                </div>
+            </Modal>
 
             {/* Adjust Stock Modal */}
             <Modal show={adjustModal} onClose={() => setAdjustModal(false)}>

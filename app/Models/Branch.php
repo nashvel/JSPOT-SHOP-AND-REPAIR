@@ -9,7 +9,9 @@ class Branch extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'address', 'contact_number', 'is_main', 'latitude', 'longitude', 'user_id'];
+    protected $fillable = ['name', 'email', 'password', 'address', 'contact_number', 'is_main', 'latitude', 'longitude'];
+
+    protected $hidden = ['password'];
 
     protected $casts = [
         'is_main' => 'boolean',
@@ -25,9 +27,21 @@ class Branch extends Model
         return $this->hasMany(User::class);
     }
 
+    // Alias for users - staff belongs to this branch
+    public function staff()
+    {
+        return $this->hasMany(User::class);
+    }
+
     public function products()
     {
         return $this->belongsToMany(Product::class)->withPivot('stock_quantity');
+    }
+
+    // Menus assigned to this branch
+    public function menus()
+    {
+        return $this->belongsToMany(Menu::class, 'menu_branch')->orderBy('order');
     }
 
     public function jobOrders()
@@ -40,3 +54,4 @@ class Branch extends Model
         return $this->hasMany(Reservation::class);
     }
 }
+

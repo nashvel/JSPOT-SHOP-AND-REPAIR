@@ -21,6 +21,8 @@ class BranchSeeder extends Seeder
 
         Branch::create([
             'name' => 'Main Branch (Makati)',
+            'email' => 'makati@jspot.com',
+            'password' => bcrypt('password'),
             'address' => 'Ayala Ave, Makati, Metro Manila',
             'contact_number' => '0917-123-4567',
             'latitude' => 14.5547,
@@ -39,6 +41,8 @@ class BranchSeeder extends Seeder
 
         Branch::create([
             'name' => 'Downtown Branch (Manila)',
+            'email' => 'manila@jspot.com',
+            'password' => bcrypt('password'),
             'address' => 'Rizal Park, Manila',
             'contact_number' => '0918-987-6543',
             'latitude' => 14.5826,
@@ -57,6 +61,8 @@ class BranchSeeder extends Seeder
 
         Branch::create([
             'name' => 'Uptown Branch (QC)',
+            'email' => 'qc@jspot.com',
+            'password' => bcrypt('password'),
             'address' => 'Quezon Memorial Circle, QC',
             'contact_number' => '0919-555-5555',
             'latitude' => 14.6516,

@@ -49,7 +49,7 @@ export default function Modal({
             <Dialog
                 as="div"
                 id="modal"
-                className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto px-4 py-6 sm:px-0"
+                className="fixed inset-0 z-50 flex items-center justify-center transform overflow-y-auto px-4 py-6 transition-all sm:px-0"
                 onClose={close}
             >
                 {/* Backdrop with optional blur */}
@@ -61,10 +61,7 @@ export default function Modal({
                     leaveFrom="opacity-100"
                     leaveTo="opacity-0"
                 >
-                    <div
-                        className={`fixed inset-0 bg-black/60 ${backdropBlur ? 'backdrop-blur-sm' : ''}`}
-                        aria-hidden="true"
-                    />
+                    <div className="fixed inset-0 bg-gray-500/75" />
                 </TransitionChild>
 
                 {/* Modal Panel */}

@@ -33,7 +33,7 @@ export default function Show({ targetUser }: { targetUser: any }) {
                                     </div>
                                     <div className="sm:col-span-1">
                                         <dt className="text-sm font-medium text-gray-500">Role</dt>
-                                        <dd className="mt-1 text-sm text-gray-900 capitalize">{targetUser.role.replace('_', ' ')}</dd>
+                                        <dd className="mt-1 text-sm text-gray-900 capitalize">{targetUser.role?.display_name || 'N/A'}</dd>
                                     </div>
                                 </dl>
                             </div>

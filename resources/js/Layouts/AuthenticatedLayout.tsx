@@ -1,12 +1,13 @@
 import { PropsWithChildren, ReactNode } from 'react';
-import { Link, usePage } from '@inertiajs/react';
-import { LayoutDashboard, Users, FileText, Settings, LogOut, Shield, Search, Folder, LifeBuoy, MoreHorizontal, PanelLeftClose } from 'lucide-react';
+import { Link, usePage, router } from '@inertiajs/react';
+import { LayoutDashboard, Users, FileText, Settings, LogOut, Shield, Search, Folder, LifeBuoy, MoreHorizontal, PanelLeftClose, ShoppingCart, ClipboardList, Package, ArrowLeftRight, Store, XCircle, MapPin, Receipt, BarChart3, PieChart, ClipboardCheck } from 'lucide-react';
 import ApplicationLogo from '@/Components/ApplicationLogo';
 
 export default function Authenticated({
     children,
 }: PropsWithChildren<{ header?: ReactNode }>) {
-    const user = usePage().props.auth.user;
+    const { auth, impersonating } = usePage().props as any;
+    const user = auth.user;
 
     // Icon mapping
     const iconMap: Record<string, any> = {
@@ -17,10 +18,20 @@ export default function Authenticated({
         Settings,
         Folder,
         LifeBuoy,
+        ShoppingCart,
+        ClipboardList,
+        Package,
+        ArrowLeftRight,
+        Store,
+        MapPin,
+        Receipt,
+        BarChart3,
+        PieChart,
+        ClipboardCheck,
     };
 
-    // Use menus from user props or fallback to empty array
-    const menus = (user as any).menus || [];
+    // Use menus from auth (comes from middleware based on impersonation/branch)
+    const menus = auth.menus || [];
 
     // Group menus
     const groupedMenus = menus.reduce((acc: any, menu: any) => {
@@ -30,12 +41,33 @@ export default function Authenticated({
         return acc;
     }, {});
 
-    const groupOrder = ['Essentials', 'Projects', 'Management', 'Support'];
+    const groupOrder = ['Essentials', 'Analytics', 'Operations', 'Inventory', 'Management', 'Support'];
+
+    const handleExitImpersonation = () => {
+        router.post(route('admin.stop-impersonating'));
+    };
 
     return (
         <div className="flex min-h-screen bg-gray-50 text-sm">
             {/* Sidebar */}
             <div className="w-64 border-r border-gray-200 bg-white flex flex-col">
+                {/* Impersonation Banner */}
+                {impersonating?.active && (
+                    <div className="bg-amber-500 text-white px-4 py-2 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <Store className="h-4 w-4" />
+                            <span className="font-medium text-sm truncate">{impersonating.branch_name}</span>
+                        </div>
+                        <button
+                            onClick={handleExitImpersonation}
+                            className="flex items-center gap-1 text-xs bg-amber-600 hover:bg-amber-700 px-2 py-1 rounded"
+                        >
+                            <XCircle className="h-3 w-3" />
+                            Exit
+                        </button>
+                    </div>
+                )}
+
                 {/* Profile / Workspace Switcher Style Header */}
                 <div className="p-4 border-b border-gray-100">
                     <div className="flex items-center justify-between mb-4">
@@ -45,7 +77,7 @@ export default function Authenticated({
                             </div>
                             <div className="min-w-0">
                                 <p className="font-semibold text-gray-900 truncate">{user.name}</p>
-                                <p className="text-xs text-gray-500 truncate capitalize">{user.role.replace('_', ' ')}</p>
+                                <p className="text-xs text-gray-500 truncate capitalize">{user.role?.display_name || 'User'}</p>
                             </div>
                         </div>
                         <PanelLeftClose className="h-4 w-4 text-gray-400" />

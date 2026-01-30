@@ -11,6 +11,21 @@ class ProductSeeder extends Seeder
 {
     public function run(): void
     {
+        // Create categories first
+        $oilCategory = Category::firstOrCreate(
+            ['name' => 'Oils & Lubricants'],
+            ['name' => 'Oils & Lubricants', 'type' => 'product']
+        );
+        $partsCategory = Category::firstOrCreate(
+            ['name' => 'Parts & Accessories'],
+            ['name' => 'Parts & Accessories', 'type' => 'product']
+        );
+        $serviceCategory = Category::firstOrCreate(
+            ['name' => 'Services'],
+            ['name' => 'Services', 'type' => 'service']
+        );
+
+        // Products (physical items with stock)
         $products = [
             // Engine Parts (10 products)
             ['name' => 'Premium Engine Oil 10W-40', 'description' => 'Synthetic 4T Oil', 'price' => 250.00, 'sku' => 'OIL-001', 'type' => 'product'],
@@ -261,5 +276,7 @@ class ProductSeeder extends Seeder
                 }
             }
         }
+
+        $this->command->info('Created ' . count($products) . ' products and ' . count($services) . ' services.');
     }
 }
