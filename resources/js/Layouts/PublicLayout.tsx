@@ -168,9 +168,9 @@ export default function PublicLayout({ children, branches = [], currentBranch, s
                                     </div>
                                 )}
 
-                                <button className="hidden sm:flex items-center gap-1 text-gray-600 hover:text-purple-700">
+                                <Link href="/login" className="hidden sm:flex items-center gap-1 text-gray-600 hover:text-purple-700">
                                     <User className="h-5 w-5" />
-                                </button>
+                                </Link>
 
                                 {/* Cart with Dropdown - Hidden on mobile */}
                                 <div className="relative hidden md:block">
@@ -185,74 +185,6 @@ export default function PublicLayout({ children, branches = [], currentBranch, s
                                             </span>
                                         )}
                                     </button>
-
-                                    {/* Cart Dropdown */}
-                                    {isCartOpen && (
-                                        <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-lg shadow-xl border border-gray-100 z-50">
-                                            <div className="p-4 border-b border-gray-100 flex items-center justify-between">
-                                                <h3 className="font-bold text-gray-900">Your Cart ({getCount()})</h3>
-                                                <button onClick={() => setIsCartOpen(false)} className="text-gray-400 hover:text-gray-600">
-                                                    <X className="w-5 h-5" />
-                                                </button>
-                                            </div>
-
-                                            {items.length === 0 ? (
-                                                <div className="p-6 text-center text-gray-500">
-                                                    Your cart is empty
-                                                </div>
-                                            ) : (
-                                                <>
-                                                    <div className="max-h-80 overflow-y-auto">
-                                                        {items.map((item: any) => (
-                                                            <div key={item.id} className="p-3 border-b border-gray-50 flex gap-3 hover:bg-gray-50">
-                                                                <img
-                                                                    src={item.image}
-                                                                    alt={item.name}
-                                                                    className="w-16 h-16 object-cover rounded-lg bg-gray-100"
-                                                                />
-                                                                <div className="flex-1 min-w-0">
-                                                                    <p className="font-semibold text-gray-900 text-sm truncate">{item.name}</p>
-                                                                    <p className="text-xs text-gray-500">{item.branchName}</p>
-                                                                    <div className="flex items-center justify-between mt-1">
-                                                                        <span className="font-bold text-purple-700">₱{item.price.toLocaleString()}</span>
-                                                                        <span className="text-xs text-gray-500">Qty: {item.quantity}</span>
-                                                                    </div>
-                                                                </div>
-                                                                <button
-                                                                    onClick={() => removeItem(item.id)}
-                                                                    className="text-gray-400 hover:text-red-500 p-1"
-                                                                >
-                                                                    <Trash2 className="w-4 h-4" />
-                                                                </button>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-
-                                                    <div className="p-4 border-t border-gray-100">
-                                                        <div className="flex justify-between mb-3">
-                                                            <span className="text-gray-600">Total:</span>
-                                                            <span className="font-bold text-lg text-purple-900">
-                                                                ₱{getTotal().toLocaleString()}
-                                                            </span>
-                                                        </div>
-                                                        <Link
-                                                            href="/cart"
-                                                            className="block w-full py-3 bg-purple-700 text-white rounded-lg font-bold hover:bg-purple-800 transition-colors text-center mb-2"
-                                                            onClick={() => setIsCartOpen(false)}
-                                                        >
-                                                            View All Items
-                                                        </Link>
-                                                        <button
-                                                            onClick={() => clearCart()}
-                                                            className="w-full py-2 text-sm text-gray-500 hover:text-red-600 transition-colors"
-                                                        >
-                                                            Clear Cart
-                                                        </button>
-                                                    </div>
-                                                </>
-                                            )}
-                                        </div>
-                                    )}
                                 </div>
                             </div>
                         </div>

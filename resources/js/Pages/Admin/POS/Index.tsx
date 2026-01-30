@@ -54,8 +54,8 @@ interface Props {
 
 export default function Index({ products, services, categories, mechanics, employee, branches, selectedBranch, canSelectBranch }: Props) {
     // Debug: Log what we receive
-    console.log('POS Data:', { 
-        products: products?.length || 0, 
+    console.log('POS Data:', {
+        products: products?.length || 0,
         services: services?.length || 0,
         categories: categories?.length || 0,
         mechanics: mechanics?.length || 0,
@@ -183,7 +183,7 @@ export default function Index({ products, services, categories, mechanics, emplo
 
     const handleCheckout = async (e: React.FormEvent) => {
         e.preventDefault();
-        
+
         // Show SweetAlert2 confirmation dialog
         const result = await Swal.fire({
             title: 'Confirm Transaction',
@@ -196,17 +196,17 @@ export default function Index({ products, services, categories, mechanics, emplo
             cancelButtonText: 'Cancel',
             reverseButtons: true,
         });
-        
+
         if (!result.isConfirmed) {
             return;
         }
-        
+
         post(route('admin.sales.store'), {
             onSuccess: () => {
                 setCart([]);
                 setShowCheckout(false);
                 reset();
-                
+
                 // Show success message
                 Swal.fire({
                     title: 'Success!',
@@ -272,8 +272,8 @@ export default function Index({ products, services, categories, mechanics, emplo
                                     <button
                                         onClick={() => { setActiveTab('products'); setSelectedCategory('all'); setSearchQuery(''); }}
                                         className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${activeTab === 'products'
-                                                ? 'bg-white text-gray-900 shadow-sm'
-                                                : 'text-gray-500 hover:text-gray-700'
+                                            ? 'bg-white text-gray-900 shadow-sm'
+                                            : 'text-gray-500 hover:text-gray-700'
                                             }`}
                                     >
                                         Products
@@ -281,8 +281,8 @@ export default function Index({ products, services, categories, mechanics, emplo
                                     <button
                                         onClick={() => { setActiveTab('services'); setSelectedCategory('all'); setSearchQuery(''); }}
                                         className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${activeTab === 'services'
-                                                ? 'bg-white text-gray-900 shadow-sm'
-                                                : 'text-gray-500 hover:text-gray-700'
+                                            ? 'bg-white text-gray-900 shadow-sm'
+                                            : 'text-gray-500 hover:text-gray-700'
                                             }`}
                                     >
                                         Services
@@ -348,8 +348,8 @@ export default function Index({ products, services, categories, mechanics, emplo
                                             </div>
                                             {item.type === 'product' && (
                                                 <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${availableStock! > 10 ? 'bg-green-100 text-green-700' :
-                                                        availableStock! > 0 ? 'bg-yellow-100 text-yellow-700' :
-                                                            'bg-red-100 text-red-700'
+                                                    availableStock! > 0 ? 'bg-yellow-100 text-yellow-700' :
+                                                        'bg-red-100 text-red-700'
                                                     }`}>
                                                     {availableStock} left
                                                 </span>
@@ -449,7 +449,7 @@ export default function Index({ products, services, categories, mechanics, emplo
                                 disabled={cart.length === 0}
                                 className="flex flex-col items-center justify-center py-3 px-2 bg-white border border-gray-200 rounded-xl hover:border-green-500 hover:text-green-600 hover:bg-green-50 transition-all disabled:opacity-50 disabled:hover:border-gray-200 disabled:hover:bg-white disabled:hover:text-inherit"
                             >
-                                <Banknote className="h-6 w-6 mb-1" />
+                                <img src="https://cdn-icons-png.flaticon.com/512/2489/2489756.png" className="h-8 w-8 mb-1 object-contain" alt="Cash" />
                                 <span className="text-[10px] font-bold uppercase tracking-wider">Cash</span>
                             </button>
                             <button
@@ -457,7 +457,7 @@ export default function Index({ products, services, categories, mechanics, emplo
                                 disabled={cart.length === 0}
                                 className="flex flex-col items-center justify-center py-3 px-2 bg-white border border-gray-200 rounded-xl hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-all disabled:opacity-50 disabled:hover:border-gray-200 disabled:hover:bg-white disabled:hover:text-inherit"
                             >
-                                <Smartphone className="h-6 w-6 mb-1" />
+                                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/52/GCash_logo.svg/1280px-GCash_logo.svg.png" className="h-8 w-auto mb-1 object-contain" alt="GCash" />
                                 <span className="text-[10px] font-bold uppercase tracking-wider">GCash</span>
                             </button>
                             <button
@@ -465,7 +465,7 @@ export default function Index({ products, services, categories, mechanics, emplo
                                 disabled={cart.length === 0}
                                 className="flex flex-col items-center justify-center py-3 px-2 bg-white border border-gray-200 rounded-xl hover:border-emerald-500 hover:text-emerald-600 hover:bg-emerald-50 transition-all disabled:opacity-50 disabled:hover:border-gray-200 disabled:hover:bg-white disabled:hover:text-inherit"
                             >
-                                <CreditCard className="h-6 w-6 mb-1" />
+                                <img src="https://upload.wikimedia.org/wikipedia/commons/e/e6/Maya_logo.svg" className="h-8 w-auto mb-1 object-contain" alt="Maya" />
                                 <span className="text-[10px] font-bold uppercase tracking-wider">Maya</span>
                             </button>
                         </div>
@@ -493,9 +493,9 @@ export default function Index({ products, services, categories, mechanics, emplo
                             <div className="bg-indigo-50 rounded-xl p-4 flex justify-between items-center border border-indigo-100">
                                 <div className="flex items-center gap-3">
                                     <div className="p-2 bg-white rounded-lg shadow-sm text-indigo-600">
-                                        {selectedPayment === 'cash' && <Banknote className="h-6 w-6" />}
-                                        {selectedPayment === 'gcash' && <Smartphone className="h-6 w-6" />}
-                                        {selectedPayment === 'maya' && <CreditCard className="h-6 w-6" />}
+                                        {selectedPayment === 'cash' && <img src="https://cdn-icons-png.flaticon.com/512/2489/2489756.png" className="h-8 w-8 object-contain" alt="Cash" />}
+                                        {selectedPayment === 'gcash' && <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/52/GCash_logo.svg/1280px-GCash_logo.svg.png" className="h-8 w-auto object-contain" alt="GCash" />}
+                                        {selectedPayment === 'maya' && <img src="https://upload.wikimedia.org/wikipedia/commons/e/e6/Maya_logo.svg" className="h-8 w-auto object-contain" alt="Maya" />}
                                     </div>
                                     <div>
                                         <p className="text-xs font-bold text-indigo-400 uppercase tracking-wider">Payment Method</p>
@@ -679,10 +679,10 @@ export default function Index({ products, services, categories, mechanics, emplo
                             <button
                                 onClick={handleCheckout}
                                 disabled={processing || data.amount_paid < cartTotal}
-                                className="w-full py-4 bg-gray-900 text-white font-bold rounded-xl hover:bg-black disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
+                                className="w-full py-4 bg-white text-gray-900 border-2 border-gray-900 font-bold rounded-xl hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
                             >
                                 {processing ? (
-                                    <span className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    <span className="h-5 w-5 border-2 border-gray-900/30 border-t-gray-900 rounded-full animate-spin" />
                                 ) : (
                                     <CheckCircle className="h-5 w-5" />
                                 )}

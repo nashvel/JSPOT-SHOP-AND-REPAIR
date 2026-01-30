@@ -48,7 +48,7 @@ export default function Authenticated({
     };
 
     return (
-        <div className="flex min-h-screen bg-gray-50 text-sm">
+        <div className="flex h-screen overflow-hidden bg-gray-50 text-sm">
             {/* Sidebar */}
             <div className="w-64 border-r border-gray-200 bg-white flex flex-col">
                 {/* Impersonation Banner */}
@@ -94,7 +94,7 @@ export default function Authenticated({
                     </div>
                 </div>
 
-                <nav className="flex-1 p-4 space-y-6 overflow-y-auto">
+                <nav className="flex-1 p-4 space-y-6 overflow-y-auto [&::-webkit-scrollbar]:hidden">
                     {groupOrder.map(group => {
                         const groupMenus = groupedMenus[group];
                         if (!groupMenus) return null;
@@ -166,7 +166,7 @@ export default function Authenticated({
             {/* Main Content */}
             <div className="flex-1 flex flex-col overflow-hidden">
                 {/* No top header bar - content flows freely like in the example image */}
-                <main className="flex-1 overflow-y-auto bg-white p-6 sm:p-8">
+                <main className="flex-1 overflow-y-auto bg-white p-6 sm:p-8 [&::-webkit-scrollbar]:hidden">
                     {/* Inject Header Here if needed */}
                     {children}
                 </main>
