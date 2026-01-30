@@ -15,6 +15,7 @@ class Sale extends Model
         'sale_number',
         'branch_id',
         'user_id',
+        'mechanic_id',
         'customer_name',
         'contact_number',
         'employee_name',
@@ -83,5 +84,15 @@ class Sale extends Model
     public function returns(): HasMany
     {
         return $this->hasMany(SalesReturn::class);
+    }
+
+    public function mechanic(): BelongsTo
+    {
+        return $this->belongsTo(Mechanic::class);
+    }
+
+    public function jobOrder(): HasMany
+    {
+        return $this->hasMany(JobOrder::class);
     }
 }

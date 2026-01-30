@@ -1,7 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, useForm, router } from '@inertiajs/react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend, RadialBarChart, RadialBar } from 'recharts';
-import { DollarSign, ShoppingBag, Package, Store, TrendingUp, ArrowUpRight } from 'lucide-react';
+import { DollarSign, ShoppingBag, Package, Store, TrendingUp, ArrowUpRight, Building2 } from 'lucide-react';
 import Modal from '@/Components/Modal';
 import SecondaryButton from '@/Components/SecondaryButton';
 import PrimaryButton from '@/Components/PrimaryButton';
@@ -11,9 +11,35 @@ import { useState } from 'react';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
-export default function Dashboard({ stats, charts, goals }: any) {
+interface Branch {
+    id: number;
+    name: string;
+}
+
+interface Props {
+    stats: any;
+    charts: any;
+    goals: any;
+    branches: Branch[];
+    selectedBranch: number | null;
+    canFilterBranches: boolean;
+}
+
+export default function Dashboard({ stats, charts, goals, branches, selectedBranch, canFilterBranches }: Props) {
     const handleTimeframeChange = (timeframe: string) => {
-        window.location.href = `?timeframe=${timeframe}`;
+        const params = new URLSearchParams(window.location.search);
+        params.set('timeframe', timeframe);
+        window.location.href = `?${params.toString()}`;
+    }
+
+    const handleBranchChange = (branchId: string) => {
+        const params = new URLSearchParams(window.location.search);
+        if (branchId) {
+            params.set('branch', branchId);
+        } else {
+            params.delete('branch');
+        }
+        window.location.href = `?${params.toString()}`;
     }
 
     const { data, setData, post, processing, errors, reset } = useForm({
@@ -78,6 +104,22 @@ export default function Dashboard({ stats, charts, goals }: any) {
                             <p className="text-gray-500 text-sm mt-1">Real-time insights and performance metrics.</p>
                         </div>
                         <div className="flex gap-2">
+                            {/* Branch Filter - Admin Only */}
+                            {canFilterBranches && (
+                                <div className="flex items-center gap-2">
+                                    <Building2 className="h-4 w-4 text-gray-400" />
+                                    <select
+                                        value={selectedBranch || ''}
+                                        onChange={(e) => handleBranchChange(e.target.value)}
+                                        className="bg-white border border-gray-200 text-gray-700 h-9 rounded-md text-sm font-medium shadow-sm focus:ring-0 focus:border-gray-200 cursor-pointer min-w-[160px]"
+                                    >
+                                        <option value="">All Branches</option>
+                                        {branches.map((branch) => (
+                                            <option key={branch.id} value={branch.id}>{branch.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
                             <select
                                 value={goals.timeframe}
                                 onChange={(e) => handleTimeframeChange(e.target.value)}

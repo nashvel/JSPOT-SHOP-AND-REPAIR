@@ -39,9 +39,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // POS System
     Route::get('admin/pos', [\App\Http\Controllers\Admin\SaleController::class, 'create'])->name('admin.pos.index');
-    Route::get('admin/job-orders', function () {
-        return Inertia::render('Admin/JobOrders/Index');
-    })->name('admin.job-orders.index');
+    Route::get('admin/job-orders', [\App\Http\Controllers\Admin\JobOrderController::class, 'index'])->name('admin.job-orders.index');
+    Route::get('admin/job-orders/{jobOrder}/edit', [\App\Http\Controllers\Admin\JobOrderController::class, 'edit'])->name('admin.job-orders.edit');
+    Route::put('admin/job-orders/{jobOrder}', [\App\Http\Controllers\Admin\JobOrderController::class, 'update'])->name('admin.job-orders.update');
 
     // Sales Management
     Route::get('admin/sales', [\App\Http\Controllers\Admin\SaleController::class, 'index'])->name('admin.sales.index');
@@ -55,6 +55,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('admin/returns/{return}/reject', [\App\Http\Controllers\Admin\ReturnController::class, 'reject'])->name('admin.returns.reject');
 
     // Product & Service Management (no delete here - only in inventory)
+    Route::resource('admin/categories', \App\Http\Controllers\Admin\CategoryController::class)->except(['create', 'edit', 'show']);
     Route::get('admin/products', [\App\Http\Controllers\Admin\ProductController::class, 'index'])->name('admin.products.index');
     Route::post('admin/products', [\App\Http\Controllers\Admin\ProductController::class, 'store'])->name('admin.products.store');
     Route::put('admin/products/{product}', [\App\Http\Controllers\Admin\ProductController::class, 'update'])->name('admin.products.update');
@@ -64,24 +65,41 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('admin/inventory/stocks/{product}/adjust', [\App\Http\Controllers\Admin\InventoryController::class, 'adjustStock'])->name('admin.stocks.adjust');
     Route::delete('admin/inventory/stocks/{product}', [\App\Http\Controllers\Admin\InventoryController::class, 'destroy'])->name('admin.stocks.destroy');
 
-    Route::get('admin/branches', function () {
-        return Inertia::render('Admin/Branches/Index');
-    })->name('admin.branches.index');
+    // Branch Management
+    Route::get('admin/branch-locations', [\App\Http\Controllers\Admin\BranchController::class, 'locations'])->name('admin.branch-locations.index');
+    Route::get('admin/branches', [\App\Http\Controllers\Admin\BranchController::class, 'index'])->name('admin.branches.index');
+    Route::get('admin/branches/create', [\App\Http\Controllers\Admin\BranchController::class, 'create'])->name('admin.branches.create');
+    Route::post('admin/branches', [\App\Http\Controllers\Admin\BranchController::class, 'store'])->name('admin.branches.store');
+    Route::get('admin/branches/{branch}/edit', [\App\Http\Controllers\Admin\BranchController::class, 'edit'])->name('admin.branches.edit');
+    Route::put('admin/branches/{branch}', [\App\Http\Controllers\Admin\BranchController::class, 'update'])->name('admin.branches.update');
+    Route::delete('admin/branches/{branch}', [\App\Http\Controllers\Admin\BranchController::class, 'destroy'])->name('admin.branches.destroy');
+    Route::post('admin/branches/{branch}/staff', [\App\Http\Controllers\Admin\BranchController::class, 'addStaff'])->name('admin.branches.staff.add');
+    Route::delete('admin/branches/{branch}/staff/{user}', [\App\Http\Controllers\Admin\BranchController::class, 'removeStaff'])->name('admin.branches.staff.remove');
+    Route::post('admin/branches/{branch}/staff/{user}/menus', [\App\Http\Controllers\Admin\BranchController::class, 'updateStaffMenus'])->name('admin.branches.staff.menus.update');
+
+    // Mechanics Management
+    Route::get('admin/mechanics', [\App\Http\Controllers\Admin\MechanicController::class, 'index'])->name('admin.mechanics.index');
+    Route::get('admin/mechanics/create', [\App\Http\Controllers\Admin\MechanicController::class, 'create'])->name('admin.mechanics.create');
+    Route::post('admin/mechanics', [\App\Http\Controllers\Admin\MechanicController::class, 'store'])->name('admin.mechanics.store');
+    Route::get('admin/mechanics/{mechanic}/edit', [\App\Http\Controllers\Admin\MechanicController::class, 'edit'])->name('admin.mechanics.edit');
+    Route::put('admin/mechanics/{mechanic}', [\App\Http\Controllers\Admin\MechanicController::class, 'update'])->name('admin.mechanics.update');
+    Route::delete('admin/mechanics/{mechanic}', [\App\Http\Controllers\Admin\MechanicController::class, 'destroy'])->name('admin.mechanics.destroy');
+    Route::post('admin/mechanics/{mechanic}/toggle-status', [\App\Http\Controllers\Admin\MechanicController::class, 'toggleStatus'])->name('admin.mechanics.toggle-status');
+    Route::get('admin/mechanics/{mechanic}/labor-history', [\App\Http\Controllers\Admin\MechanicController::class, 'laborHistory'])->name('admin.mechanics.labor-history');
+
+    // Analytics & Reports
+    Route::get('admin/analytics', [\App\Http\Controllers\Admin\AnalyticsController::class, 'index'])->name('admin.analytics.index');
+    Route::get('admin/analytics/inventory', [\App\Http\Controllers\Admin\AnalyticsController::class, 'inventory'])->name('admin.analytics.inventory');
+    Route::get('admin/analytics/sales', [\App\Http\Controllers\Admin\AnalyticsController::class, 'sales'])->name('admin.analytics.sales');
+    Route::get('admin/analytics/job-orders', [\App\Http\Controllers\Admin\AnalyticsController::class, 'jobOrders'])->name('admin.analytics.job-orders');
+
+    // Impersonation Routes
+    Route::post('admin/impersonate/{branch}', [\App\Http\Controllers\Admin\ImpersonationController::class, 'impersonate'])->name('admin.impersonate');
+    Route::post('admin/stop-impersonating', [\App\Http\Controllers\Admin\ImpersonationController::class, 'stopImpersonating'])->name('admin.stop-impersonating');
+
     Route::get('admin/settings', function () {
         return Inertia::render('Admin/Settings/Index');
     })->name('admin.settings.index');
-
-    Route::get('/director/dashboard', function () {
-        return Inertia::render('Director/Dashboard');
-    })->name('director.dashboard');
-
-    Route::get('/overall/dashboard', function () {
-        return Inertia::render('Overall/Dashboard');
-    })->name('overall.dashboard');
-
-    Route::get('/area/dashboard', function () {
-        return Inertia::render('Area/Dashboard');
-    })->name('area.dashboard');
 });
 
 Route::middleware('auth')->group(function () {

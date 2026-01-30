@@ -15,12 +15,28 @@ class InventoryController extends Controller
         $user = auth()->user();
 
         // Get products only (not services) with branch stock
-        $products = Product::where('type', 'product')
+        $productsQuery = Product::where('type', 'product');
+
+        // Only show products that are attached to the user's branch or filtered branch
+        if ($user->branch_id) {
+            $productsQuery->whereHas('branches', function ($q) use ($user) {
+                $q->where('branch_id', $user->branch_id);
+            });
+        } elseif ($request->branch_id) {
+            // System Admin: filter by selected branch
+            $productsQuery->whereHas('branches', function ($q) use ($request) {
+                $q->where('branch_id', $request->branch_id);
+            });
+        }
+
+        $products = $productsQuery
             ->with([
-                'branches' => function ($query) use ($user) {
-                    // If user has a branch, show only that branch's stock
+                'branches' => function ($query) use ($user, $request) {
+                    // Show stock for user's branch or filtered branch
                     if ($user->branch_id) {
                         $query->where('branch_id', $user->branch_id);
+                    } elseif ($request->branch_id) {
+                        $query->where('branch_id', $request->branch_id);
                     }
                 }
             ])
@@ -32,11 +48,13 @@ class InventoryController extends Controller
             ->withQueryString();
 
         $branches = Branch::all();
+        $categories = \App\Models\Category::all();
 
         return Inertia::render('Admin/Stocks/Index', [
             'products' => $products,
             'branches' => $branches,
-            'filters' => $request->only(['search']),
+            'categories' => $categories,
+            'filters' => $request->only(['search', 'branch_id']),
             'userBranchId' => $user->branch_id,
         ]);
     }

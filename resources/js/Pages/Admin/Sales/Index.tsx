@@ -1,7 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { Search, Eye, Filter, RefreshCw, Banknote, Smartphone, CreditCard } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface SaleItem {
     id: number;
@@ -32,20 +32,41 @@ interface Props {
         current_page: number;
         last_page: number;
     };
+    branches: { id: number; name: string }[];
     filters: {
         search?: string;
         status?: string;
         payment_method?: string;
+        start_date?: string;
+        end_date?: string;
+        branch_id?: number;
     };
+    userBranchId: number | null;
 }
 
-export default function Index({ sales, filters }: Props) {
+export default function Index({ sales, branches, filters, userBranchId }: Props) {
     const [search, setSearch] = useState(filters.search || '');
+    const [startDate, setStartDate] = useState(filters.start_date || '');
+    const [endDate, setEndDate] = useState(filters.end_date || '');
+    const [branchId, setBranchId] = useState(filters.branch_id || '');
 
-    const handleSearch = (e: React.FormEvent) => {
-        e.preventDefault();
-        router.get(route('admin.sales.index'), { search }, { preserveState: true });
-    };
+    // Auto-search with debounce
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            router.get(route('admin.sales.index'), { 
+                search, 
+                start_date: startDate, 
+                end_date: endDate,
+                branch_id: branchId || undefined
+            }, { 
+                preserveState: true,
+                preserveScroll: true,
+                replace: true
+            });
+        }, 300);
+
+        return () => clearTimeout(timer);
+    }, [search, startDate, endDate, branchId]);
 
     const formatPrice = (price: number) => `₱${parseFloat(String(price)).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
     const formatDate = (date: string) => new Date(date).toLocaleString('en-PH', {
@@ -81,36 +102,62 @@ export default function Index({ sales, filters }: Props) {
 
             <div className="py-8">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex items-center justify-between mb-6">
-                        <div>
-                            <h1 className="text-2xl font-bold text-gray-900">Sales Records</h1>
-                            <p className="text-gray-500">View and manage all completed sales</p>
-                        </div>
-                        <Link
-                            href={route('admin.pos.index')}
-                            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
-                        >
-                            New Sale
-                        </Link>
+                    <div className="mb-6">
+                        <h1 className="text-2xl font-bold text-gray-900">Sales Records</h1>
+                        <p className="text-gray-500">View and manage all completed sales</p>
                     </div>
 
                     {/* Filters */}
                     <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
-                        <form onSubmit={handleSearch} className="flex gap-4">
-                            <div className="flex-1 relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                                <input
-                                    type="text"
-                                    placeholder="Search by sale number, customer name, or plate..."
-                                    value={search}
-                                    onChange={e => setSearch(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-2 rounded-lg border-gray-300 focus:ring-indigo-500 focus:border-indigo-500"
-                                />
+                        <div className="space-y-4">
+                            <div className="flex gap-4">
+                                <div className="flex-1 relative">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                                    <input
+                                        type="text"
+                                        placeholder="Search by sale number, customer name, or plate..."
+                                        value={search}
+                                        onChange={e => setSearch(e.target.value)}
+                                        className="w-full pl-10 pr-4 py-2 rounded-lg border-gray-300 focus:ring-indigo-500 focus:border-indigo-500"
+                                    />
+                                </div>
                             </div>
-                            <button type="submit" className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium">
-                                Search
-                            </button>
-                        </form>
+                            <div className="flex gap-4">
+                                {!userBranchId && (
+                                    <div className="flex-1">
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Branch</label>
+                                        <select
+                                            value={branchId}
+                                            onChange={e => setBranchId(e.target.value)}
+                                            className="w-full px-4 py-2 rounded-lg border-gray-300 focus:ring-indigo-500 focus:border-indigo-500"
+                                        >
+                                            <option value="">All Branches</option>
+                                            {branches.map(branch => (
+                                                <option key={branch.id} value={branch.id}>{branch.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+                                <div className="flex-1">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                                    <input
+                                        type="date"
+                                        value={startDate}
+                                        onChange={e => setStartDate(e.target.value)}
+                                        className="w-full px-4 py-2 rounded-lg border-gray-300 focus:ring-indigo-500 focus:border-indigo-500"
+                                    />
+                                </div>
+                                <div className="flex-1">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                                    <input
+                                        type="date"
+                                        value={endDate}
+                                        onChange={e => setEndDate(e.target.value)}
+                                        className="w-full px-4 py-2 rounded-lg border-gray-300 focus:ring-indigo-500 focus:border-indigo-500"
+                                    />
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     {/* Sales Table */}
