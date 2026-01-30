@@ -38,6 +38,14 @@ export default function Wishlist({ branches, companyEmail, themeColors, tagline 
                     {/* Header */}
                     <div className="flex items-center justify-between mb-8">
                         <div>
+                            <Link
+                                href="/"
+                                className="inline-flex items-center gap-2 text-purple-600 hover:text-purple-800 mb-2 text-sm"
+                            >
+                                <ArrowLeft className="w-4 h-4" />
+                                <span className="hidden sm:inline">Continue Shopping</span>
+                                <span className="sm:hidden">Back</span>
+                            </Link>
                             <h1 className="text-xl sm:text-3xl font-black text-gray-900">Your Wishlist</h1>
                             <p className="text-gray-500 mt-1 text-sm">{getCount()} items saved</p>
                         </div>

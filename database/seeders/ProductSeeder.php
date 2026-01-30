@@ -7,6 +7,8 @@ use App\Models\Product;
 use App\Models\Branch;
 use App\Models\ProductSection;
 
+use App\Models\Category;
+
 class ProductSeeder extends Seeder
 {
     public function run(): void
@@ -277,6 +279,6 @@ class ProductSeeder extends Seeder
             }
         }
 
-        $this->command->info('Created ' . count($products) . ' products and ' . count($services) . ' services.');
+        $this->command->info('Created ' . count($products) . ' products.');
     }
 }

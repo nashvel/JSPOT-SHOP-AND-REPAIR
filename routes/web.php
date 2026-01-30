@@ -101,7 +101,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('admin/stop-impersonating', [\App\Http\Controllers\Admin\ImpersonationController::class, 'stopImpersonating'])->name('admin.stop-impersonating');
 
     Route::get('admin/settings', function () {
-        return Inertia::render('Admin/Settings/Index');
+        $settings = \App\Models\Setting::all()->groupBy('group');
+        return Inertia::render('Admin/Settings/Index', [
+            'settings' => $settings
+        ]);
     })->name('admin.settings.index');
 });
 

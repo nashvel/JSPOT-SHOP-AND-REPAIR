@@ -6,6 +6,7 @@ import TextInput from '@/Components/TextInput';
 import GuestLayout from '@/Layouts/GuestLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { FormEventHandler } from 'react';
+import { User, Lock } from 'lucide-react';
 
 export default function Login({
     status,
@@ -32,78 +33,85 @@ export default function Login({
         <GuestLayout>
             <Head title="Log in" />
 
-            {status && (
-                <div className="mb-4 text-sm font-medium text-green-600">
-                    {status}
-                </div>
-            )}
-
-            <form onSubmit={submit}>
-                <div>
-                    <InputLabel htmlFor="email" value="Email" />
-
-                    <TextInput
-                        id="email"
-                        type="email"
-                        name="email"
-                        value={data.email}
-                        className="mt-1 block w-full"
-                        autoComplete="username"
-                        isFocused={true}
-                        onChange={(e) => setData('email', e.target.value)}
-                    />
-
-                    <InputError message={errors.email} className="mt-2" />
-                </div>
-
-                <div className="mt-4">
-                    <InputLabel htmlFor="password" value="Password" />
-
-                    <TextInput
-                        id="password"
-                        type="password"
-                        name="password"
-                        value={data.password}
-                        className="mt-1 block w-full"
-                        autoComplete="current-password"
-                        onChange={(e) => setData('password', e.target.value)}
-                    />
-
-                    <InputError message={errors.password} className="mt-2" />
-                </div>
-
-                <div className="mt-4 block">
-                    <label className="flex items-center">
-                        <Checkbox
-                            name="remember"
-                            checked={data.remember}
-                            onChange={(e) =>
-                                setData(
-                                    'remember',
-                                    (e.target.checked || false) as false,
-                                )
-                            }
+            <form onSubmit={submit} className="mt-8 space-y-6">
+                <div className="space-y-6">
+                    {/* Username/Email Input */}
+                    <div className="relative group">
+                        <InputLabel
+                            htmlFor="email"
+                            value="Username"
+                            className="text-xs text-gray-500 font-medium mb-1"
                         />
-                        <span className="ms-2 text-sm text-gray-600">
-                            Remember me
-                        </span>
-                    </label>
+                        <div className="relative">
+                            <TextInput
+                                id="email"
+                                type="email"
+                                name="email"
+                                value={data.email}
+                                className="block w-full border-0 border-b border-gray-300 py-3 pl-8 text-gray-900 placeholder-gray-400 focus:border-purple-500 focus:ring-0 sm:text-sm bg-transparent transition-colors"
+                                autoComplete="username"
+                                isFocused={true}
+                                placeholder="Type your username"
+                                onChange={(e) => setData('email', e.target.value)}
+                            />
+                            <div className="absolute inset-y-0 left-0 flex items-center pointer-events-none">
+                                <User className="h-4 w-4 text-gray-400" />
+                            </div>
+                        </div>
+                        <InputError message={errors.email} className="mt-2" />
+                    </div>
+
+                    {/* Password Input */}
+                    <div className="relative group">
+                        <InputLabel
+                            htmlFor="password"
+                            value="Password"
+                            className="text-xs text-gray-500 font-medium mb-1"
+                        />
+                        <div className="relative">
+                            <TextInput
+                                id="password"
+                                type="password"
+                                name="password"
+                                value={data.password}
+                                className="block w-full border-0 border-b border-gray-300 py-3 pl-8 text-gray-900 placeholder-gray-400 focus:border-purple-500 focus:ring-0 sm:text-sm bg-transparent transition-colors"
+                                autoComplete="current-password"
+                                placeholder="Type your password"
+                                onChange={(e) => setData('password', e.target.value)}
+                            />
+                            <div className="absolute inset-y-0 left-0 flex items-center pointer-events-none">
+                                <Lock className="h-4 w-4 text-gray-400" />
+                            </div>
+                        </div>
+                        <InputError message={errors.password} className="mt-2" />
+                    </div>
                 </div>
 
-                <div className="mt-4 flex items-center justify-end">
+                <div className="flex items-center justify-end">
                     {canResetPassword && (
                         <Link
                             href={route('password.request')}
-                            className="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                            className="text-xs text-gray-400 hover:text-purple-600 transition-colors"
                         >
-                            Forgot your password?
+                            Forgot password?
                         </Link>
                     )}
+                </div>
 
-                    <PrimaryButton className="ms-4" disabled={processing}>
-                        Log in
+                <div>
+                    <PrimaryButton
+                        className="w-full justify-center py-3 bg-gradient-to-r from-cyan-400 to-purple-500 hover:opacity-90 transition-opacity rounded-full border-0 text-white font-bold tracking-wider shadow-lg"
+                        disabled={processing}
+                    >
+                        LOGIN
                     </PrimaryButton>
                 </div>
+
+                {status && (
+                    <div className="text-sm font-medium text-green-600 bg-green-50 p-2 rounded text-center">
+                        {status}
+                    </div>
+                )}
             </form>
         </GuestLayout>
     );
