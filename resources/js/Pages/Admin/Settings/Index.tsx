@@ -1,10 +1,12 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, usePage, router } from '@inertiajs/react';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical } from 'lucide-react';
+import { GripVertical, Download, Upload, RefreshCw, Database, AlertCircle, CheckCircle, Clock, Calendar } from 'lucide-react';
+import { exportBackup, importBackup, getEmergencyBackupInfo, restoreEmergencyBackup, getBackupSettings, saveBackupSettings } from '@/lib/backup';
+import { getUnsyncedCount } from '@/lib/sync';
 
 // Draggable Item Component
 function SortableItem(props: any) {
@@ -100,6 +102,9 @@ export default function Index({ settings }: { settings: any }) {
                         </div>
                     </div>
 
+                    {/* Offline Data Backup Section */}
+                    <OfflineBackupSection />
+
                     {/* System Configuration (Seeded Data) */}
                     {Object.entries(settings).map(([group, groupSettings]: [string, any]) => (
                         <SettingsGroup key={group} group={group} settings={groupSettings} />
@@ -107,6 +112,224 @@ export default function Index({ settings }: { settings: any }) {
                 </div>
             </div>
         </AuthenticatedLayout>
+    );
+}
+
+// Offline Backup Section Component
+function OfflineBackupSection() {
+    const [isExporting, setIsExporting] = useState(false);
+    const [isImporting, setIsImporting] = useState(false);
+    const [isRestoring, setIsRestoring] = useState(false);
+    const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+    const [unsyncedCount, setUnsyncedCount] = useState<number | null>(null);
+    const [emergencyInfo, setEmergencyInfo] = useState<{ timestamp: string; count: number } | null>(null);
+    const [scheduleSettings, setScheduleSettings] = useState(() => getBackupSettings());
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Load initial data
+    useState(() => {
+        getUnsyncedCount().then(setUnsyncedCount).catch(() => { });
+        const info = getEmergencyBackupInfo();
+        if (info) setEmergencyInfo(info);
+    });
+
+    const handleScheduleChange = (key: string, value: any) => {
+        const newSettings = { ...scheduleSettings, [key]: value };
+        setScheduleSettings(newSettings);
+        saveBackupSettings(newSettings);
+        setMessage({ type: 'success', text: 'Backup schedule updated!' });
+    };
+
+    const handleExport = async () => {
+        setIsExporting(true);
+        setMessage(null);
+        try {
+            await exportBackup();
+            setMessage({ type: 'success', text: 'Backup exported successfully!' });
+        } catch (error) {
+            setMessage({ type: 'error', text: 'Failed to export backup.' });
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
+    const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsImporting(true);
+        setMessage(null);
+        try {
+            const result = await importBackup(file);
+            setMessage({ type: 'success', text: `Imported ${result.imported} records (${result.skipped} skipped).` });
+            const count = await getUnsyncedCount();
+            setUnsyncedCount(count);
+        } catch (error) {
+            setMessage({ type: 'error', text: 'Failed to import backup. Invalid file format.' });
+        } finally {
+            setIsImporting(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
+
+    const handleEmergencyRestore = async () => {
+        setIsRestoring(true);
+        setMessage(null);
+        try {
+            const result = await restoreEmergencyBackup();
+            setMessage({ type: 'success', text: `Restored ${result.restored} records from emergency backup.` });
+            const count = await getUnsyncedCount();
+            setUnsyncedCount(count);
+        } catch (error) {
+            setMessage({ type: 'error', text: 'No emergency backup found or restore failed.' });
+        } finally {
+            setIsRestoring(false);
+        }
+    };
+
+    return (
+        <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg p-8 h-full">
+            <div className="mb-6 border-b border-gray-200 pb-4">
+                <div className="flex items-center gap-2 mb-1">
+                    <Database className="h-5 w-5 text-indigo-600" />
+                    <h3 className="text-lg font-bold text-gray-900">Offline Data Backup</h3>
+                </div>
+                <p className="text-sm text-gray-500">Export or import local offline data for backup and recovery.</p>
+            </div>
+
+            {/* Status */}
+            {unsyncedCount !== null && (
+                <div className={`mb-6 p-3 rounded-lg flex items-center gap-2 ${unsyncedCount > 0 ? 'bg-amber-50 text-amber-800' : 'bg-green-50 text-green-800'}`}>
+                    {unsyncedCount > 0 ? (
+                        <>
+                            <AlertCircle className="h-4 w-4" />
+                            <span className="text-sm font-medium">{unsyncedCount} unsynced records pending</span>
+                        </>
+                    ) : (
+                        <>
+                            <CheckCircle className="h-4 w-4" />
+                            <span className="text-sm font-medium">All data is synced</span>
+                        </>
+                    )}
+                </div>
+            )}
+
+            {/* Message */}
+            {message && (
+                <div className={`mb-6 p-3 rounded-lg flex items-center gap-2 ${message.type === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
+                    {message.type === 'success' ? <CheckCircle className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
+                    <span className="text-sm">{message.text}</span>
+                </div>
+            )}
+
+            <div className="space-y-4">
+                {/* Export Button */}
+                <button
+                    onClick={handleExport}
+                    disabled={isExporting}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                >
+                    <Download className={`h-4 w-4 ${isExporting ? 'animate-bounce' : ''}`} />
+                    <span className="font-medium">{isExporting ? 'Exporting...' : 'Export Backup'}</span>
+                </button>
+
+                {/* Import Button */}
+                <label className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 cursor-pointer transition-colors">
+                    <Upload className={`h-4 w-4 ${isImporting ? 'animate-bounce' : ''}`} />
+                    <span className="font-medium">{isImporting ? 'Importing...' : 'Import Backup'}</span>
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".json"
+                        onChange={handleImport}
+                        disabled={isImporting}
+                        className="hidden"
+                    />
+                </label>
+
+                {/* Emergency Restore */}
+                {emergencyInfo && (
+                    <div className="pt-4 border-t border-gray-200">
+                        <p className="text-xs text-gray-500 mb-2">
+                            Emergency backup from {new Date(emergencyInfo.timestamp).toLocaleString()} ({emergencyInfo.count} records)
+                        </p>
+                        <button
+                            onClick={handleEmergencyRestore}
+                            disabled={isRestoring}
+                            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-amber-100 text-amber-800 rounded-lg hover:bg-amber-200 disabled:opacity-50 transition-colors"
+                        >
+                            <RefreshCw className={`h-4 w-4 ${isRestoring ? 'animate-spin' : ''}`} />
+                            <span className="text-sm font-medium">{isRestoring ? 'Restoring...' : 'Restore Emergency Backup'}</span>
+                        </button>
+                    </div>
+                )}
+
+                {/* Scheduled Backup Settings */}
+                <div className="pt-4 border-t border-gray-200">
+                    <div className="flex items-center gap-2 mb-4">
+                        <Clock className="h-4 w-4 text-indigo-600" />
+                        <h4 className="text-sm font-semibold text-gray-900">Scheduled Backup</h4>
+                    </div>
+
+                    {/* Enable/Disable Toggle */}
+                    <div className="flex items-center justify-between mb-4">
+                        <span className="text-sm text-gray-700">Auto-backup enabled</span>
+                        <button
+                            onClick={() => handleScheduleChange('enabled', !scheduleSettings.enabled)}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${scheduleSettings.enabled ? 'bg-indigo-600' : 'bg-gray-200'
+                                }`}
+                        >
+                            <span
+                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${scheduleSettings.enabled ? 'translate-x-6' : 'translate-x-1'
+                                    }`}
+                            />
+                        </button>
+                    </div>
+
+                    {scheduleSettings.enabled && (
+                        <div className="space-y-4">
+                            {/* Frequency */}
+                            <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">Frequency</label>
+                                <div className="flex gap-2">
+                                    {(['daily', 'weekly', 'monthly'] as const).map((freq) => (
+                                        <button
+                                            key={freq}
+                                            onClick={() => handleScheduleChange('frequency', freq)}
+                                            className={`flex-1 px-3 py-2 text-xs font-medium rounded-lg transition-colors ${scheduleSettings.frequency === freq
+                                                    ? 'bg-indigo-600 text-white'
+                                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                                }`}
+                                        >
+                                            {freq.charAt(0).toUpperCase() + freq.slice(1)}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Time */}
+                            <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">Backup Time</label>
+                                <input
+                                    type="time"
+                                    value={scheduleSettings.time}
+                                    onChange={(e) => handleScheduleChange('time', e.target.value)}
+                                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                />
+                            </div>
+
+                            {/* Last Backup Info */}
+                            {scheduleSettings.lastBackup && (
+                                <p className="text-xs text-gray-500 flex items-center gap-1">
+                                    <Calendar className="h-3 w-3" />
+                                    Last backup: {new Date(scheduleSettings.lastBackup).toLocaleString()}
+                                </p>
+                            )}
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
     );
 }
 

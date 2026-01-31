@@ -1,8 +1,10 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, router } from '@inertiajs/react';
-import { useState, useMemo } from 'react';
-import { Search, Plus, Minus, ShoppingCart, CreditCard, Banknote, Smartphone, X, CheckCircle, Package, Wrench, Menu } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { Search, Plus, Minus, ShoppingCart, CreditCard, Banknote, Smartphone, X, CheckCircle, Package, Wrench, Menu, WifiOff, CloudOff } from 'lucide-react';
 import Swal from 'sweetalert2';
+import { useOfflineData, createOfflineSale } from '@/lib/useOfflineData';
+import { OfflineProduct } from '@/lib/db';
 
 interface Branch {
     id: number;
@@ -16,13 +18,16 @@ interface Category {
 }
 
 interface Product {
-    id: number;
+    id: number | string;
     name: string;
     sku: string;
     price: number;
     type: 'product' | 'service';
-    category_id: number | null;
+    category_id: number | string | null;
+    categoryId?: number | string | null;
+    categoryName?: string | null;
     branches: { pivot: { stock_quantity: number } }[];
+    stock?: number;
 }
 
 interface CartItem {
@@ -70,6 +75,29 @@ export default function Index({ products, services, categories, mechanics, emplo
     const [selectedPayment, setSelectedPayment] = useState<'cash' | 'gcash' | 'maya' | null>(null);
     const [showCheckout, setShowCheckout] = useState(false);
     const [isCartOpen, setIsCartOpen] = useState(false);
+    const [isOffline, setIsOffline] = useState(!navigator.onLine);
+    const [isProcessingOffline, setIsProcessingOffline] = useState(false);
+
+    // Offline data hook - syncs server data to IndexedDB
+    const { products: offlineProducts, categories: offlineCategories, isLoading: offlineLoading } = useOfflineData({
+        branchId: selectedBranch,
+        serverProducts: [...(products || []), ...(services || [])],
+        serverCategories: categories,
+    });
+
+    // Monitor online/offline status
+    useEffect(() => {
+        const handleOnline = () => setIsOffline(false);
+        const handleOffline = () => setIsOffline(true);
+
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+
+        return () => {
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener('offline', handleOffline);
+        };
+    }, []);
 
     const { data, setData, post, processing, errors, reset } = useForm({
         customer_name: '',
@@ -150,14 +178,14 @@ export default function Index({ products, services, categories, mechanics, emplo
         }
     };
 
-    const updateQuantity = (productId: number, delta: number) => {
+    const updateQuantity = (productId: number | string, delta: number) => {
         setCart(cart.map(item => {
             if (item.product.id === productId) {
                 if (item.product.type === 'service') {
                     const newQty = Math.max(1, item.quantity + delta);
                     return { ...item, quantity: newQty };
                 } else {
-                    const stock = item.product.branches[0]?.pivot?.stock_quantity || 0;
+                    const stock = item.product.branches?.[0]?.pivot?.stock_quantity || (item.product as any).stock || 0;
                     const newQty = Math.max(1, Math.min(stock, item.quantity + delta));
                     return { ...item, quantity: newQty };
                 }
@@ -166,9 +194,10 @@ export default function Index({ products, services, categories, mechanics, emplo
         }));
     };
 
-    const removeFromCart = (productId: number) => {
+    const removeFromCart = (productId: number | string) => {
         setCart(cart.filter(item => item.product.id !== productId));
     };
+
 
     const openCheckout = (method: 'cash' | 'gcash' | 'maya') => {
         if (cart.length === 0) return;
@@ -177,7 +206,7 @@ export default function Index({ products, services, categories, mechanics, emplo
             ...data,
             payment_method: method,
             amount_paid: cartTotal,
-            items: cart.map(item => ({ product_id: item.product.id, quantity: item.quantity })),
+            items: cart.map(item => ({ product_id: Number(item.product.id), quantity: item.quantity })),
         });
         setShowCheckout(true);
     };
@@ -188,12 +217,14 @@ export default function Index({ products, services, categories, mechanics, emplo
         // Show SweetAlert2 confirmation dialog
         const result = await Swal.fire({
             title: 'Confirm Transaction',
-            text: 'Are you sure you want to confirm this transaction? This action cannot be undone.',
+            text: isOffline
+                ? 'You are offline. This transaction will be saved locally and synced when online.'
+                : 'Are you sure you want to confirm this transaction? This action cannot be undone.',
             icon: 'question',
             showCancelButton: true,
             confirmButtonColor: '#4F46E5',
             cancelButtonColor: '#6B7280',
-            confirmButtonText: 'Yes, Confirm',
+            confirmButtonText: isOffline ? 'Save Locally' : 'Yes, Confirm',
             cancelButtonText: 'Cancel',
             reverseButtons: true,
         });
@@ -202,14 +233,78 @@ export default function Index({ products, services, categories, mechanics, emplo
             return;
         }
 
+        // OFFLINE MODE: Save to IndexedDB
+        if (isOffline) {
+            setIsProcessingOffline(true);
+            try {
+                await createOfflineSale({
+                    branchId: selectedBranch,
+                    mechanicId: data.mechanic_id ? Number(data.mechanic_id) : null,
+                    mechanicName: mechanics.find(m => m.id === Number(data.mechanic_id))?.name || null,
+                    customerName: data.customer_name || undefined,
+                    items: cart.map(item => ({
+                        product: {
+                            id: String(item.product.id),
+                            serverId: typeof item.product.id === 'number' ? item.product.id : null,
+                            name: item.product.name,
+                            sku: item.product.sku || null,
+                            type: item.product.type,
+                            categoryId: item.product.category_id?.toString() || null,
+                            categoryName: (item.product as any).categoryName || null,
+                            price: item.product.price,
+                            cost: null,
+                            description: null,
+                            stock: (item.product as any).stock || 0,
+                            lowStockThreshold: 10,
+                            branchId: selectedBranch,
+                            synced: true,
+                            createdAt: new Date(),
+                            updatedAt: new Date(),
+                        },
+                        quantity: item.quantity,
+                        paymentMethod: data.payment_method,
+                        referenceNumber: data.reference_number || null,
+                    })),
+                    paymentMethod: data.payment_method as 'cash' | 'gcash' | 'maya',
+                    amountPaid: data.amount_paid,
+                    referenceNumber: data.reference_number || null,
+                    notes: data.job_description || undefined,
+                });
+
+                setCart([]);
+                setShowCheckout(false);
+                reset();
+                setIsCartOpen(false);
+
+                Swal.fire({
+                    title: 'Saved Locally!',
+                    text: 'Transaction saved offline. It will sync automatically when you\'re back online.',
+                    icon: 'success',
+                    confirmButtonColor: '#4F46E5',
+                    timer: 2500,
+                });
+            } catch (error) {
+                console.error('[Offline] Failed to save sale:', error);
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'Failed to save transaction locally. Please try again.',
+                    icon: 'error',
+                    confirmButtonColor: '#4F46E5',
+                });
+            } finally {
+                setIsProcessingOffline(false);
+            }
+            return;
+        }
+
+        // ONLINE MODE: Post to server as before
         post(route('admin.sales.store'), {
             onSuccess: () => {
                 setCart([]);
                 setShowCheckout(false);
                 reset();
-                setIsCartOpen(false); // Close cart drawer on success if open
+                setIsCartOpen(false);
 
-                // Show success message
                 Swal.fire({
                     title: 'Success!',
                     text: 'Transaction completed successfully.',
@@ -219,7 +314,6 @@ export default function Index({ products, services, categories, mechanics, emplo
                 });
             },
             onError: () => {
-                // Show error message
                 Swal.fire({
                     title: 'Error!',
                     text: 'Failed to complete transaction. Please try again.',
@@ -229,6 +323,7 @@ export default function Index({ products, services, categories, mechanics, emplo
             },
         });
     };
+
 
     const formatPrice = (price: number) => `₱${price.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
 
