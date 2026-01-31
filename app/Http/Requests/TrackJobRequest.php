@@ -17,7 +17,7 @@ class TrackJobRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'tracking_code' => 'required|string|exists:job_orders,tracking_code',
+            'tracking_code' => 'required|string',
         ];
     }
 }
