@@ -435,7 +435,7 @@ export default function Index({ products, services, categories, mechanics, emplo
 
                     {/* Grid */}
                     <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-gray-50">
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+                        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
                             {filteredItems.map(item => {
                                 const stock = item.type === 'product' ? (item.branches[0]?.pivot?.stock_quantity || 0) : null;
                                 const cartItem = cart.find(c => c.product.id === item.id);
@@ -444,42 +444,88 @@ export default function Index({ products, services, categories, mechanics, emplo
                                 const isOutOfStock = item.type === 'product' && availableStock! <= 0;
 
                                 return (
-                                    <button
+                                    <div
                                         key={item.id}
-                                        onClick={() => addToCart(item)}
-                                        disabled={isOutOfStock}
-                                        className={`group relative bg-white rounded-xl border border-gray-200 p-4 text-left transition-all hover:shadow-lg hover:-translate-y-0.5 disabled:hover:translate-y-0 disabled:hover:shadow-none ${isOutOfStock ? 'opacity-60 grayscale' : ''
+                                        className={`relative bg-white rounded-xl border p-3 transition-all hover:shadow-md ${cartQuantity > 0
+                                            ? 'border-indigo-400 shadow-sm'
+                                            : isOutOfStock
+                                                ? 'border-gray-200 opacity-50'
+                                                : 'border-gray-200 hover:border-indigo-300'
                                             }`}
                                     >
-                                        <div className="flex justify-between items-start mb-2">
-                                            <div className={`p-2 rounded-lg ${item.type === 'product' ? 'bg-blue-50 text-blue-600' : 'bg-green-50 text-green-600'
-                                                }`}>
-                                                {item.type === 'product' ? <Package className="h-5 w-5" /> : <Wrench className="h-5 w-5" />}
+                                        {/* Cart Indicator Badge */}
+                                        {cartQuantity > 0 && (
+                                            <div className="absolute -top-2 -right-2 bg-indigo-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5 z-10 shadow">
+                                                <ShoppingCart className="h-2.5 w-2.5" />
+                                                {cartQuantity}
                                             </div>
-                                            {item.type === 'product' && (
-                                                <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${availableStock! > 10 ? 'bg-green-100 text-green-700' :
-                                                    availableStock! > 0 ? 'bg-yellow-100 text-yellow-700' :
-                                                        'bg-red-100 text-red-700'
-                                                    }`}>
-                                                    {availableStock} left
-                                                </span>
-                                            )}
-                                        </div>
+                                        )}
 
-                                        <h3 className="font-semibold text-gray-900 text-sm line-clamp-2 min-h-[2.5rem] mb-1 group-hover:text-indigo-600 transition-colors">
+                                        {/* Square Image Area */}
+                                        <button
+                                            onClick={() => addToCart(item)}
+                                            disabled={isOutOfStock}
+                                            className="w-full aspect-square bg-gray-100 rounded-lg mb-2 flex items-center justify-center hover:bg-gray-50 transition-colors disabled:cursor-not-allowed"
+                                        >
+                                            <Package className="h-10 w-10 text-gray-400" />
+                                        </button>
+
+                                        {/* Stock Badge (Products Only) */}
+                                        {item.type === 'product' && (
+                                            <span className={`absolute top-4 right-4 text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${availableStock! > 10 ? 'bg-green-100 text-green-600' :
+                                                availableStock! > 0 ? 'bg-yellow-100 text-yellow-600' :
+                                                    'bg-red-100 text-red-600'
+                                                }`}>
+                                                {availableStock} left
+                                            </span>
+                                        )}
+
+                                        {/* Product Name */}
+                                        <h3 className="font-medium text-gray-900 text-sm truncate mb-0.5">
                                             {item.name}
                                         </h3>
-                                        <p className="text-xs text-gray-400 font-mono mb-3">{item.sku || 'No SKU'}</p>
 
-                                        <div className="flex items-end justify-between">
-                                            <span className="text-lg font-bold text-gray-900 tracking-tight">
+                                        {/* Stock Info */}
+                                        <p className="text-xs text-gray-400 mb-2">
+                                            {item.type === 'product' ? `${stock} available` : 'Service'}
+                                        </p>
+
+                                        {/* Price and Controls */}
+                                        <div className="flex items-center justify-between gap-2">
+                                            <span className="text-indigo-600 font-semibold text-sm">
                                                 {formatPrice(item.price)}
                                             </span>
-                                            <div className="h-8 w-8 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
-                                                <Plus className="h-4 w-4" />
-                                            </div>
+
+                                            {cartQuantity > 0 ? (
+                                                <div className="flex items-center gap-0.5 flex-shrink-0">
+                                                    <button
+                                                        onClick={() => updateQuantity(item.id, -1)}
+                                                        className="w-5 h-5 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-gray-600 transition-colors"
+                                                    >
+                                                        <Minus className="h-2.5 w-2.5" />
+                                                    </button>
+                                                    <span className="w-4 text-center text-xs font-medium text-gray-700">
+                                                        {cartQuantity}
+                                                    </span>
+                                                    <button
+                                                        onClick={() => updateQuantity(item.id, 1)}
+                                                        disabled={item.type === 'product' && availableStock! <= 0}
+                                                        className="w-5 h-5 rounded bg-indigo-500 hover:bg-indigo-600 flex items-center justify-center text-white transition-colors disabled:opacity-50"
+                                                    >
+                                                        <Plus className="h-2.5 w-2.5" />
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <button
+                                                    onClick={() => addToCart(item)}
+                                                    disabled={isOutOfStock}
+                                                    className="w-5 h-5 flex-shrink-0 rounded bg-gray-100 hover:bg-indigo-500 hover:text-white flex items-center justify-center text-gray-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    <Plus className="h-3 w-3" />
+                                                </button>
+                                            )}
                                         </div>
-                                    </button>
+                                    </div>
                                 );
                             })}
                         </div>
@@ -541,7 +587,7 @@ export default function Index({ products, services, categories, mechanics, emplo
                                             <h4 className="text-sm font-medium text-gray-900 leading-tight">{item.product.name}</h4>
                                             <button
                                                 onClick={() => removeFromCart(item.product.id)}
-                                                className="text-gray-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                                                className="text-gray-400 hover:text-red-500 hover:bg-red-50 rounded p-0.5 transition-colors"
                                             >
                                                 <X className="h-4 w-4" />
                                             </button>
