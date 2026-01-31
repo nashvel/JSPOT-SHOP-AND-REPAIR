@@ -1,10 +1,105 @@
-import { PropsWithChildren, ReactNode, useState } from 'react';
+import { PropsWithChildren, ReactNode, useState, useRef, useEffect } from 'react';
 import { Link, usePage, router } from '@inertiajs/react';
-import { LayoutDashboard, Users, FileText, Settings, LogOut, Shield, Search, Folder, LifeBuoy, MoreHorizontal, PanelLeftClose, ShoppingCart, ClipboardList, Package, ArrowLeftRight, Store, XCircle, MapPin, Receipt, BarChart3, PieChart, ClipboardCheck, Menu } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, Settings, LogOut, Shield, Search, Folder, LifeBuoy, MoreHorizontal, PanelLeftClose, ShoppingCart, ClipboardList, Package, ArrowLeftRight, Store, XCircle, MapPin, Receipt, BarChart3, PieChart, ClipboardCheck, Menu, Bell } from 'lucide-react';
 import ApplicationLogo from '@/Components/ApplicationLogo';
+
+const DropdownNotification = ({ lowStockState }: { lowStockState: any }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    return (
+        <div className="relative" ref={dropdownRef}>
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                className={`relative p-2 transition-colors focus:outline-none rounded-full hover:bg-gray-100 ${isOpen ? 'text-indigo-600 bg-gray-100' : 'text-gray-500'}`}
+            >
+                <Bell className="h-6 w-6" />
+                {lowStockState?.count > 0 && (
+                    <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-white">
+                        {lowStockState.count}
+                    </span>
+                )}
+            </button>
+
+            {isOpen && (
+                <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl border border-gray-100 z-50 overflow-hidden origin-top-right animate-in fade-in zoom-in-95 duration-200">
+                    <div className="px-4 py-3 border-b border-gray-50 bg-gray-50/50 flex justify-between items-center">
+                        <h3 className="text-sm font-semibold text-gray-900">Notifications</h3>
+                        {lowStockState?.count > 0 && (
+                            <span className="text-xs font-medium text-red-600 bg-red-50 px-2 py-0.5 rounded-full">
+                                {lowStockState.count} Alert(s)
+                            </span>
+                        )}
+                    </div>
+                    <div className="max-h-96 overflow-y-auto">
+                        {lowStockState?.items?.length > 0 ? (
+                            <div className="py-2">
+                                {lowStockState.items.map((item: any, idx: number) => (
+                                    <Link
+                                        key={idx}
+                                        href={route('admin.stocks.index', { search: item.name })}
+                                        className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0 group"
+                                        onClick={() => setIsOpen(false)}
+                                    >
+                                        <div className="flex-shrink-0 mt-1">
+                                            <div className="h-8 w-8 rounded-full bg-red-100 flex items-center justify-center group-hover:bg-red-200 transition-colors">
+                                                <Package className="h-4 w-4 text-red-600" />
+                                            </div>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-medium text-gray-900 truncate">
+                                                {item.name}
+                                            </p>
+                                            <p className="text-xs text-gray-500 mt-0.5">
+                                                <span className="font-semibold text-red-600">{item.stock} left</span> (Threshold: {item.low_stock_threshold})
+                                            </p>
+                                            {item.branch_name && (
+                                                <p className="text-[10px] text-gray-400 mt-0.5 flex items-center gap-1">
+                                                    <Store className="h-3 w-3" /> {item.branch_name}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </Link>
+                                ))}
+                                {lowStockState.count > 5 && (
+                                    <Link
+                                        href={route('admin.stocks.index', { low_stock: true })}
+                                        className="block px-4 py-3 text-xs text-center text-indigo-600 font-medium hover:bg-indigo-50 transition-colors border-t border-gray-100"
+                                        onClick={() => setIsOpen(false)}
+                                    >
+                                        View all {lowStockState.count} alerts
+                                    </Link>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="px-4 py-8 text-center text-gray-500">
+                                <div className="mx-auto h-12 w-12 text-gray-300 mb-2 flex items-center justify-center rounded-full bg-gray-50">
+                                    <Bell className="h-6 w-6" />
+                                </div>
+                                <p className="text-sm">No new notifications</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
 
 export default function Authenticated({
     children,
+    header,
 }: PropsWithChildren<{ header?: ReactNode }>) {
     const { auth, impersonating } = usePage().props as any;
     const user = auth.user;
@@ -198,11 +293,34 @@ export default function Authenticated({
                             <span className="font-bold text-gray-900">JSPOT POS</span>
                         </div>
                     </div>
+
+                    {/* Mobile Actions */}
+                    <div className="flex items-center gap-3">
+                        <DropdownNotification lowStockState={(usePage().props as any).lowStockState} />
+                        <div className="h-8 w-8 rounded-full bg-gray-100 overflow-hidden border border-gray-200">
+                            <img src="/user.png" alt="Profile" className="h-full w-full object-cover" />
+                        </div>
+                    </div>
                 </div>
 
-                {/* No top header bar - content flows freely like in the example image */}
+                {/* Header with Notification */}
+                <header className="bg-white border-b border-gray-200 sticky top-0 z-30 px-6 py-3 flex items-center justify-between">
+                    <h1 className="text-xl font-semibold text-gray-800">
+                        {header}
+                    </h1>
+                    <div className="hidden lg:flex items-center gap-4">
+                        <DropdownNotification lowStockState={(usePage().props as any).lowStockState} />
+                        <div className="flex items-center gap-3 border-l pl-4 ml-2">
+                            <div className="text-right hidden sm:block">
+                                <p className="text-sm font-medium text-gray-900">{user.name}</p>
+                                <p className="text-xs text-gray-500">{user.role?.display_name || 'User'}</p>
+                            </div>
+                            <img src="/user.png" alt="Profile" className="h-8 w-8 rounded-full bg-gray-100 object-cover" />
+                        </div>
+                    </div>
+                </header>
+
                 <main className="flex-1 overflow-y-auto bg-white p-6 sm:p-8 [&::-webkit-scrollbar]:hidden">
-                    {/* Inject Header Here if needed */}
                     {children}
                 </main>
             </div>

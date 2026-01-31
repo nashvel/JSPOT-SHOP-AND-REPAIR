@@ -28,6 +28,7 @@ export default function Index({ products, categories: initialCategories, branche
         cost: '',
         description: '',
         category_id: '',
+        low_stock_threshold: '10',
     });
 
     // Search Logic
@@ -70,24 +71,24 @@ export default function Index({ products, categories: initialCategories, branche
             });
             return;
         }
-        
+
         try {
             const response = await axios.post(route('categories.store'), {
                 name: newCategoryName,
                 type: data.type
             });
-            
+
             // Add new category to the list
             const newCategory = response.data.category;
             setCategories([...categories, newCategory]);
-            
+
             // Auto-select the new category
             setData('category_id', newCategory.id.toString());
-            
+
             // Reset and close quick add
             setNewCategoryName('');
             setQuickAddCategory(false);
-            
+
             // Show success message
             Swal.fire({
                 icon: 'success',
@@ -139,6 +140,9 @@ export default function Index({ products, categories: initialCategories, branche
                                         className="pl-9 w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                                     />
                                 </div>
+
+
+
                                 <button
                                     onClick={() => openAddModal('product')}
                                     className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
@@ -178,19 +182,39 @@ export default function Index({ products, categories: initialCategories, branche
                                 </button>
                             </div>
 
-                            {/* Branch Filter (System Admin Only) */}
-                            {!userBranchId && (
+                            <div className="ml-auto flex gap-2">
+                                {/* Stock Filter */}
                                 <select
-                                    value={branchId}
-                                    onChange={(e) => handleBranchFilter(e.target.value)}
-                                    className="ml-auto rounded-lg border-gray-300 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                                    value={filters.low_stock ? 'low_stock' : 'all'}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        router.get(route('admin.products.index'), {
+                                            search,
+                                            type: typeFilter,
+                                            branch_id: branchId,
+                                            low_stock: val === 'low_stock' ? true : undefined
+                                        }, { preserveState: true, replace: true });
+                                    }}
+                                    className="rounded-lg border-gray-300 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                                 >
-                                    <option value="">All Branches</option>
-                                    {branches?.map((branch: any) => (
-                                        <option key={branch.id} value={branch.id}>{branch.name}</option>
-                                    ))}
+                                    <option value="all">All Items</option>
+                                    <option value="low_stock">Low Stock</option>
                                 </select>
-                            )}
+
+                                {/* Branch Filter (System Admin Only) */}
+                                {!userBranchId && (
+                                    <select
+                                        value={branchId}
+                                        onChange={(e) => handleBranchFilter(e.target.value)}
+                                        className="rounded-lg border-gray-300 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                                    >
+                                        <option value="">All Branches</option>
+                                        {branches?.map((branch: any) => (
+                                            <option key={branch.id} value={branch.id}>{branch.name}</option>
+                                        ))}
+                                    </select>
+                                )}
+                            </div>
                         </div>
 
                         {/* DataGrid */}
@@ -239,11 +263,19 @@ export default function Index({ products, categories: initialCategories, branche
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     {product.type === 'product' ? (
-                                                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                                            {Array.isArray(product.branches) 
+                                                        (() => {
+                                                            const totalStock = Array.isArray(product.branches)
                                                                 ? product.branches.reduce((acc: number, b: any) => acc + (b.pivot?.stock_quantity || 0), 0)
-                                                                : 0} Units
-                                                        </span>
+                                                                : 0;
+                                                            const threshold = product.low_stock_threshold ?? 10;
+                                                            const isLowStock = totalStock <= threshold;
+
+                                                            return (
+                                                                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${isLowStock ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
+                                                                    {totalStock} Units
+                                                                </span>
+                                                            );
+                                                        })()
                                                     ) : (
                                                         <span className="text-gray-400 text-xs">N/A</span>
                                                     )}
@@ -394,6 +426,20 @@ export default function Index({ products, categories: initialCategories, branche
                                 />
                                 {errors.price && <div className="text-red-500 text-xs mt-1">{errors.price}</div>}
                             </div>
+                            {data.type === 'product' && (
+                                <div className="col-span-2">
+                                    <InputLabel htmlFor="low_stock_threshold" value="Low Stock Threshold" />
+                                    <TextInput
+                                        id="low_stock_threshold"
+                                        type="number"
+                                        value={data.low_stock_threshold}
+                                        onChange={(e) => setData('low_stock_threshold', e.target.value)}
+                                        className="mt-1 block w-full"
+                                        placeholder="Default: 10"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">Notification triggers when stock falls at or below this level.</p>
+                                </div>
+                            )}
                         </div>
 
                         <div className="mt-6 flex justify-end gap-3">

@@ -274,4 +274,221 @@ class AnalyticsController extends Controller
             'canFilterBranches' => $this->canFilterBranches(),
         ]);
     }
+
+    /**
+     * Export Sales Data
+     */
+    public function exportSales(Request $request)
+    {
+        $branchId = $this->getBranchFilter($request);
+        // Allows forcing a specific branch from the modal if user is admin
+        if ($this->canFilterBranches() && $request->has('branch_id')) {
+            $branchId = $request->input('branch_id') === 'null' ? null : (int) $request->input('branch_id');
+        }
+
+        $dateFilter = $request->query('date', 'today');
+        $startDate = $request->query('start');
+        $endDate = $request->query('end');
+
+        // Determine date range (reusing logic or simplified)
+        $dateRange = match ($dateFilter) {
+            'today' => [Carbon::today(), Carbon::today()->endOfDay()],
+            'week' => [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()],
+            'month' => [Carbon::now()->startOfMonth(), Carbon::now()->endOfMonth()],
+            'year' => [Carbon::now()->startOfYear(), Carbon::now()->endOfYear()],
+            'custom' => [
+                $startDate ? Carbon::parse($startDate)->startOfDay() : Carbon::today()->subMonth(),
+                $endDate ? Carbon::parse($endDate)->endOfDay() : Carbon::today()->endOfDay(),
+            ],
+            default => [Carbon::today(), Carbon::today()->endOfDay()],
+        };
+
+        $salesQuery = Sale::query()
+            ->with(['branch:id,name', 'user:id,name', 'items.product:id,name'])
+            ->whereBetween('created_at', $dateRange);
+
+        if ($branchId) {
+            $salesQuery->where('branch_id', $branchId);
+        }
+
+        $sales = $salesQuery->orderBy('created_at', 'desc')->get();
+
+        $filename = 'sales_report_' . Carbon::now()->format('Ymd_His') . '.csv';
+
+        $headers = [
+            "Content-type" => "text/csv",
+            "Content-Disposition" => "attachment; filename=$filename",
+            "Pragma" => "no-cache",
+            "Cache-Control" => "must-revalidate, post-check=0, pre-check=0",
+            "Expires" => "0"
+        ];
+
+        $callback = function () use ($sales) {
+            $file = fopen('php://output', 'w');
+            fputcsv($file, ['Sale Number', 'Date', 'Customer', 'Branch', 'Items', 'Total', 'Payment Method', 'Processed By']);
+
+            foreach ($sales as $sale) {
+                $itemNames = $sale->items->map(fn($item) => $item->product->name . ' (' . $item->quantity . ')')->implode(', ');
+
+                fputcsv($file, [
+                    $sale->sale_number,
+                    $sale->created_at->format('Y-m-d H:i:s'),
+                    $sale->customer_name ?? 'Walk-in',
+                    $sale->branch->name ?? 'N/A',
+                    $itemNames,
+                    $sale->total,
+                    $sale->payment_method,
+                    $sale->user->name ?? 'Unknown'
+                ]);
+            }
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * Export Inventory Data
+     */
+    public function exportInventory(Request $request)
+    {
+        $branchId = $this->getBranchFilter($request);
+        // Allows forcing a specific branch from the modal if user is admin
+        if ($this->canFilterBranches() && $request->has('branch_id')) {
+            $branchId = $request->input('branch_id') === 'null' ? null : (int) $request->input('branch_id');
+        }
+
+        $filter = $request->query('filter', 'all');
+        $lowStockThreshold = (int) $request->query('threshold', 10);
+
+        $query = DB::table('branch_product')
+            ->join('products', 'branch_product.product_id', '=', 'products.id')
+            ->join('branches', 'branch_product.branch_id', '=', 'branches.id')
+            ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
+            ->select(
+                'products.name',
+                'products.sku',
+                'products.price',
+                'products.cost',
+                'categories.name as category_name',
+                'branches.name as branch_name',
+                'branch_product.stock_quantity'
+            )
+            ->where('products.type', 'product');
+
+        if ($branchId) {
+            $query->where('branch_product.branch_id', $branchId);
+        }
+
+        switch ($filter) {
+            case 'low_stock':
+                $query->where('branch_product.stock_quantity', '>', 0)
+                    ->where('branch_product.stock_quantity', '<=', $lowStockThreshold);
+                break;
+            case 'out_of_stock':
+                $query->where('branch_product.stock_quantity', '=', 0);
+                break;
+            case 'in_stock':
+                $query->where('branch_product.stock_quantity', '>', $lowStockThreshold);
+                break;
+        }
+
+        $inventory = $query->orderBy('branches.name')->orderBy('products.name')->get();
+
+        $filename = 'inventory_report_' . Carbon::now()->format('Ymd_His') . '.csv';
+
+        $headers = [
+            "Content-type" => "text/csv",
+            "Content-Disposition" => "attachment; filename=$filename",
+            "Pragma" => "no-cache",
+            "Cache-Control" => "must-revalidate, post-check=0, pre-check=0",
+            "Expires" => "0"
+        ];
+
+        $callback = function () use ($inventory) {
+            $file = fopen('php://output', 'w');
+            fputcsv($file, ['Product Name', 'SKU', 'Category', 'Branch', 'Stock Quantity', 'Cost', 'Price', 'Total Value']);
+
+            foreach ($inventory as $item) {
+                fputcsv($file, [
+                    $item->name,
+                    $item->sku,
+                    $item->category_name ?? 'Uncategorized',
+                    $item->branch_name,
+                    $item->stock_quantity,
+                    $item->cost,
+                    $item->price,
+                    $item->stock_quantity * $item->cost
+                ]);
+            }
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * Export Job Orders Data
+     */
+    public function exportJobOrders(Request $request)
+    {
+        $branchId = $this->getBranchFilter($request);
+        // Allows forcing a specific branch from the modal if user is admin
+        if ($this->canFilterBranches() && $request->has('branch_id')) {
+            $branchId = $request->input('branch_id') === 'null' ? null : (int) $request->input('branch_id');
+        }
+
+        $status = $request->query('status', 'all');
+        $dateFilter = $request->query('date', 'all');
+
+        $dateRange = null;
+        if ($dateFilter !== 'all') {
+            $dateRange = match ($dateFilter) {
+                'today' => [Carbon::today(), Carbon::today()->endOfDay()],
+                'week' => [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()],
+                'month' => [Carbon::now()->startOfMonth(), Carbon::now()->endOfMonth()],
+                default => null,
+            };
+        }
+
+        $query = JobOrder::query()
+            ->with(['branch:id,name', 'mechanic:id,name'])
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->when($status !== 'all', fn($q) => $q->where('status', $status))
+            ->when($dateRange, fn($q) => $q->whereBetween('created_at', $dateRange));
+
+        $jobOrders = $query->orderBy('created_at', 'desc')->get();
+
+        $filename = 'job_orders_report_' . Carbon::now()->format('Ymd_His') . '.csv';
+
+        $headers = [
+            "Content-type" => "text/csv",
+            "Content-Disposition" => "attachment; filename=$filename",
+            "Pragma" => "no-cache",
+            "Cache-Control" => "must-revalidate, post-check=0, pre-check=0",
+            "Expires" => "0"
+        ];
+
+        $callback = function () use ($jobOrders) {
+            $file = fopen('php://output', 'w');
+            fputcsv($file, ['Tracking Code', 'Date', 'Customer', 'Device', 'Issue', 'Branch', 'Mechanic', 'Status', 'Cost']);
+
+            foreach ($jobOrders as $job) {
+                fputcsv($file, [
+                    $job->tracking_code,
+                    $job->created_at->format('Y-m-d H:i:s'),
+                    $job->customer_name,
+                    ($job->device_brand ?? '') . ' ' . ($job->device_type ?? ''),
+                    $job->issue_description,
+                    $job->branch->name ?? 'N/A',
+                    $job->mechanic->name ?? 'Unassigned',
+                    ucfirst(str_replace('_', ' ', $job->status)),
+                    $job->estimated_cost ?? 0
+                ]);
+            }
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
 }

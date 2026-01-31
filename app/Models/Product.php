@@ -9,7 +9,7 @@ class Product extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['type', 'name', 'description', 'sku', 'barcode', 'price', 'image', 'category_id', 'cost'];
+    protected $fillable = ['type', 'name', 'description', 'sku', 'barcode', 'price', 'image', 'category_id', 'cost', 'low_stock_threshold'];
 
     public function category()
     {
@@ -51,9 +51,9 @@ class Product extends Model
             ->withTimestamps();
 
         if ($branchId) {
-            $query->where(function($q) use ($branchId) {
+            $query->where(function ($q) use ($branchId) {
                 $q->wherePivot('branch_id', $branchId)
-                  ->orWherePivotNull('branch_id');
+                    ->orWherePivotNull('branch_id');
             });
         } else {
             $query->wherePivotNull('branch_id');

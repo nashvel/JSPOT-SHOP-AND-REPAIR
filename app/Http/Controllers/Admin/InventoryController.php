@@ -44,6 +44,21 @@ class InventoryController extends Controller
                 $query->where('name', 'like', "%{$search}%")
                     ->orWhere('sku', 'like', "%{$search}%");
             })
+            ->when($request->boolean('low_stock'), function ($query) use ($user, $request) {
+                // Filter products that have stock <= threshold in the relevant branch
+                $query->whereHas('branches', function ($q) use ($user, $request) {
+                    if ($user->branch_id) {
+                        $q->where('branch_id', $user->branch_id)
+                            ->whereRaw('branch_product.stock_quantity <= products.low_stock_threshold');
+                    } elseif ($request->branch_id) {
+                        $q->where('branch_id', $request->branch_id)
+                            ->whereRaw('branch_product.stock_quantity <= products.low_stock_threshold');
+                    } else {
+                        // If no specific branch selected for admin, check if ANY branch has low stock
+                        $q->whereRaw('branch_product.stock_quantity <= products.low_stock_threshold');
+                    }
+                });
+            })
             ->paginate(15)
             ->withQueryString();
 
@@ -54,7 +69,7 @@ class InventoryController extends Controller
             'products' => $products,
             'branches' => $branches,
             'categories' => $categories,
-            'filters' => $request->only(['search', 'branch_id']),
+            'filters' => $request->only(['search', 'branch_id', 'low_stock']),
             'userBranchId' => $user->branch_id,
         ]);
     }
