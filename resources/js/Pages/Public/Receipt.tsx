@@ -265,18 +265,18 @@ export default function Receipt({ sale, jobOrder }: Props) {
                     {/* Receipt Card */}
                     <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
                         {/* Header */}
-                        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-4 text-center text-white relative">
+                        <div className="bg-white p-4 text-center border-b border-gray-100 relative">
                             {/* Print Button - Hidden when printing */}
                             <button
                                 onClick={() => window.print()}
-                                className="no-print absolute top-2 right-2 flex items-center gap-1 bg-white/20 hover:bg-white/30 px-2 py-1 rounded-lg transition-colors text-xs"
+                                className="no-print absolute top-4 right-4 flex items-center gap-1 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg transition-colors text-xs font-medium text-gray-700"
                             >
                                 <Printer className="h-3 w-3" />
                                 <span>Print</span>
                             </button>
 
-                            <h1 className="text-xl font-bold">JSPOT SHOP & REPAIR</h1>
-                            <p className="text-indigo-200 text-xs">Customer Receipt</p>
+                            <h1 className="text-xl font-bold text-gray-900">JSPOT SHOP & REPAIR</h1>
+                            <p className="text-gray-500 text-xs mt-1">Customer Receipt</p>
                         </div>
 
                         {/* QR Code at Top */}
@@ -349,8 +349,8 @@ export default function Receipt({ sale, jobOrder }: Props) {
                                                     <div className="flex items-center gap-1">
                                                         <p className="font-medium">{item.product_name}</p>
                                                         <span className={`text-[8px] px-1 py-0.5 rounded ${item.product_type === 'product'
-                                                                ? 'bg-blue-100 text-blue-700'
-                                                                : 'bg-green-100 text-green-700'
+                                                            ? 'bg-blue-100 text-blue-700'
+                                                            : 'bg-green-100 text-green-700'
                                                             }`}>
                                                             {item.product_type === 'product' ? 'P' : 'S'}
                                                         </span>
