@@ -67,7 +67,7 @@ interface Props {
 
 export default function Receipt({ sale, jobOrder }: Props) {
     const [showJobOrder, setShowJobOrder] = useState(false);
-    
+
     const formatPrice = (price: number) => `₱${parseFloat(String(price)).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
     const formatDate = (date: string) => new Date(date).toLocaleString('en-PH', {
         year: 'numeric',
@@ -76,7 +76,7 @@ export default function Receipt({ sale, jobOrder }: Props) {
         hour: '2-digit',
         minute: '2-digit',
     });
-    
+
     const receiptUrl = window.location.href;
 
     const PaymentIcon = ({ method }: { method: string }) => {
@@ -107,7 +107,7 @@ export default function Receipt({ sale, jobOrder }: Props) {
     return (
         <>
             <Head title={`Receipt - ${sale.sale_number}`} />
-            
+
             {/* Print-specific styles */}
             <style>{`
                 @media print {
@@ -274,7 +274,7 @@ export default function Receipt({ sale, jobOrder }: Props) {
                                 <Printer className="h-3 w-3" />
                                 <span>Print</span>
                             </button>
-                            
+
                             <h1 className="text-xl font-bold">JSPOT SHOP & REPAIR</h1>
                             <p className="text-indigo-200 text-xs">Customer Receipt</p>
                         </div>
@@ -286,11 +286,18 @@ export default function Receipt({ sale, jobOrder }: Props) {
                                     <p className="text-xs text-gray-500 mb-1">Receipt No.</p>
                                     <p className="font-mono font-bold text-sm text-indigo-600">{sale.sale_number}</p>
                                     <p className="text-xs text-gray-500 mt-1">{formatDate(sale.created_at)}</p>
+
+                                    {jobOrder && (
+                                        <div className="mt-2 pt-2 border-t border-dashed border-gray-200">
+                                            <p className="text-xs text-gray-500 mb-1">Tracking ID</p>
+                                            <p className="font-mono font-bold text-sm text-purple-600">{jobOrder.tracking_code}</p>
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="flex flex-col items-center">
                                     <div className="bg-white p-2 rounded border border-gray-200">
-                                        <QRCodeSVG 
-                                            value={receiptUrl} 
+                                        <QRCodeSVG
+                                            value={receiptUrl}
                                             size={80}
                                             level="H"
                                         />
@@ -302,231 +309,230 @@ export default function Receipt({ sale, jobOrder }: Props) {
 
                         {/* Sales Receipt - Always Visible */}
                         <div>
-                                {/* Sale Info - Removed since it's now at top with QR */}
+                            {/* Sale Info - Removed since it's now at top with QR */}
 
-                                {/* Customer & Vehicle Info */}
-                                <div className="p-3 bg-gray-50 border-b no-break">
-                                    <div className="grid grid-cols-2 gap-2 text-xs">
-                                        <div>
-                                            <p className="text-gray-500 text-[10px]">Customer</p>
-                                            <p className="font-medium">{sale.customer_name}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-gray-500 text-[10px]">Contact</p>
-                                            <p className="font-medium">{sale.contact_number}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-gray-500 text-[10px]">Engine</p>
-                                            <p className="font-mono text-[10px]">{sale.engine_number}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-gray-500 text-[10px]">Chassis</p>
-                                            <p className="font-mono text-[10px]">{sale.chassis_number}</p>
-                                        </div>
-                                        <div className="col-span-2">
-                                            <p className="text-gray-500 text-[10px]">Plate Number</p>
-                                            <p className="font-mono text-sm font-bold">{sale.plate_number}</p>
-                                        </div>
+                            {/* Customer & Vehicle Info */}
+                            <div className="p-3 bg-gray-50 border-b no-break">
+                                <div className="grid grid-cols-2 gap-2 text-xs">
+                                    <div>
+                                        <p className="text-gray-500 text-[10px]">Customer</p>
+                                        <p className="font-medium">{sale.customer_name}</p>
                                     </div>
-                                </div>
-
-                                {/* Items */}
-                                <div className="p-3 border-b no-break">
-                                    <h3 className="font-semibold text-gray-900 mb-2 text-xs">Items Purchased</h3>
-                                    <div className="space-y-1">
-                                        {sale.items.map((item, index) => (
-                                            <div key={item.id} className="flex justify-between text-xs border-b border-gray-100 pb-1">
-                                                <div className="flex gap-2 flex-1">
-                                                    <span className="text-gray-400">{index + 1}.</span>
-                                                    <div className="flex-1">
-                                                        <div className="flex items-center gap-1">
-                                                            <p className="font-medium">{item.product_name}</p>
-                                                            <span className={`text-[8px] px-1 py-0.5 rounded ${
-                                                                item.product_type === 'product' 
-                                                                    ? 'bg-blue-100 text-blue-700' 
-                                                                    : 'bg-green-100 text-green-700'
-                                                            }`}>
-                                                                {item.product_type === 'product' ? 'P' : 'S'}
-                                                            </span>
-                                                        </div>
-                                                        <p className="text-[10px] text-gray-500">
-                                                            {item.quantity} × {formatPrice(item.unit_price)}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                                <span className="font-medium">{formatPrice(item.total)}</span>
-                                            </div>
-                                        ))}
+                                    <div>
+                                        <p className="text-gray-500 text-[10px]">Contact</p>
+                                        <p className="font-medium">{sale.contact_number}</p>
                                     </div>
-                                </div>
-
-                                {/* Totals */}
-                                <div className="p-3 bg-gray-50 border-b no-break">
-                                    <div className="space-y-1 text-xs">
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-500">Subtotal</span>
-                                            <span>{formatPrice(sale.subtotal)}</span>
-                                        </div>
-                                        <div className="flex justify-between font-bold border-t pt-1">
-                                            <span>Total</span>
-                                            <span className="text-indigo-600">{formatPrice(sale.total)}</span>
-                                        </div>
+                                    <div>
+                                        <p className="text-gray-500 text-[10px]">Engine</p>
+                                        <p className="font-mono text-[10px]">{sale.engine_number}</p>
                                     </div>
-                                </div>
-
-                                {/* Payment Info */}
-                                <div className="p-3 border-b no-break">
-                                    <div className="flex items-center justify-between p-2 bg-green-50 border border-green-200 rounded">
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center text-green-600">
-                                                <PaymentIcon method={sale.payment_method} />
-                                            </div>
-                                            <div>
-                                                <p className="text-[10px] text-green-700">Payment</p>
-                                                <p className="text-xs font-semibold capitalize text-green-800">{sale.payment_method}</p>
-                                            </div>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-[10px] text-green-700">Paid</p>
-                                            <p className="text-xs font-bold text-green-800">{formatPrice(sale.amount_paid)}</p>
-                                        </div>
+                                    <div>
+                                        <p className="text-gray-500 text-[10px]">Chassis</p>
+                                        <p className="font-mono text-[10px]">{sale.chassis_number}</p>
                                     </div>
-                                    {sale.change > 0 && (
-                                        <p className="text-center mt-1 text-[10px] text-gray-500">
-                                            Change: <span className="font-medium text-gray-700">{formatPrice(sale.change)}</span>
-                                        </p>
-                                    )}
-                                </div>
-
-                                {/* Footer */}
-                                <div className="p-3 bg-gray-50 text-center no-break">
-                                    <p className="text-[10px] text-gray-600">Thank you for your purchase!</p>
-                                    <p className="text-[8px] text-gray-400 mt-1">
-                                        {sale.branch.name} • {sale.user.name}
-                                    </p>
+                                    <div className="col-span-2">
+                                        <p className="text-gray-500 text-[10px]">Plate Number</p>
+                                        <p className="font-mono text-sm font-bold">{sale.plate_number}</p>
+                                    </div>
                                 </div>
                             </div>
 
-                            {/* Job Order Dropdown - Only show if services were purchased */}
-                            {jobOrder && (
-                                <div className="border-t-4 border-indigo-100">
-                                    {/* Dropdown Button */}
-                                    <button
-                                        onClick={() => setShowJobOrder(!showJobOrder)}
-                                        className="w-full p-4 bg-gradient-to-r from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 transition-colors flex items-center justify-between no-print"
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center">
-                                                <Wrench className="h-5 w-5 text-white" />
+                            {/* Items */}
+                            <div className="p-3 border-b no-break">
+                                <h3 className="font-semibold text-gray-900 mb-2 text-xs">Items Purchased</h3>
+                                <div className="space-y-1">
+                                    {sale.items.map((item, index) => (
+                                        <div key={item.id} className="flex justify-between text-xs border-b border-gray-100 pb-1">
+                                            <div className="flex gap-2 flex-1">
+                                                <span className="text-gray-400">{index + 1}.</span>
+                                                <div className="flex-1">
+                                                    <div className="flex items-center gap-1">
+                                                        <p className="font-medium">{item.product_name}</p>
+                                                        <span className={`text-[8px] px-1 py-0.5 rounded ${item.product_type === 'product'
+                                                                ? 'bg-blue-100 text-blue-700'
+                                                                : 'bg-green-100 text-green-700'
+                                                            }`}>
+                                                            {item.product_type === 'product' ? 'P' : 'S'}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-[10px] text-gray-500">
+                                                        {item.quantity} × {formatPrice(item.unit_price)}
+                                                    </p>
+                                                </div>
                                             </div>
-                                            <div className="text-left">
-                                                <p className="font-bold text-indigo-900">Track Your Service</p>
-                                                <p className="text-xs text-indigo-600">Click to view job order status</p>
-                                            </div>
+                                            <span className="font-medium">{formatPrice(item.total)}</span>
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                            <StatusBadge status={jobOrder.status} />
-                                            {showJobOrder ? (
-                                                <ChevronUp className="h-6 w-6 text-indigo-600" />
-                                            ) : (
-                                                <ChevronDown className="h-6 w-6 text-indigo-600 animate-bounce" />
-                                            )}
-                                        </div>
-                                    </button>
-
-                                    {/* Job Order Details - Collapsible */}
-                                    {showJobOrder && (
-                                        <div className="bg-white animate-in slide-in-from-top duration-300">
-                                            {/* Job Order Header */}
-                                            <div className="p-6 border-b">
-                                                <div className="flex justify-between items-start mb-4">
-                                                    <div>
-                                                        <p className="text-sm text-gray-500">Tracking Code</p>
-                                                        <p className="font-mono font-bold text-lg text-indigo-600">{jobOrder.tracking_code}</p>
-                                                    </div>
-                                                    <StatusBadge status={jobOrder.status} />
-                                                </div>
-                                                <div className="text-sm text-gray-500">
-                                                    <p>Created: {formatDate(jobOrder.created_at)}</p>
-                                                    <p>Last Updated: {formatDate(jobOrder.updated_at)}</p>
-                                                    {jobOrder.completed_at && (
-                                                        <p className="text-green-600 font-medium">Completed: {formatDate(jobOrder.completed_at)}</p>
-                                                    )}
-                                                </div>
-                                            </div>
-
-                                            {/* Mechanic Info */}
-                                            <div className="p-6 bg-gray-50 border-b">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center">
-                                                        <Wrench className="h-6 w-6 text-indigo-600" />
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-sm text-gray-500">Assigned Mechanic</p>
-                                                        <p className="font-semibold text-gray-900">{jobOrder.mechanic.name}</p>
-                                                        {jobOrder.mechanic.specialization && (
-                                                            <p className="text-xs text-gray-500">{jobOrder.mechanic.specialization}</p>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* Job Description */}
-                                            <div className="p-6 border-b">
-                                                <h3 className="font-semibold text-gray-900 mb-2">Job Description</h3>
-                                                <p className="text-gray-700 bg-gray-50 p-3 rounded-lg">{jobOrder.description}</p>
-                                            </div>
-
-                                            {/* Parts Used */}
-                                            {jobOrder.parts.length > 0 && (
-                                                <div className="p-6 border-b">
-                                                    <h3 className="font-semibold text-gray-900 mb-3">Parts Used</h3>
-                                                    <div className="space-y-2">
-                                                        {jobOrder.parts.map((part) => (
-                                                            <div key={part.id} className="flex justify-between text-sm bg-gray-50 p-3 rounded-lg">
-                                                                <div>
-                                                                    <p className="font-medium">{part.part_name}</p>
-                                                                    <p className="text-gray-500">Qty: {part.quantity}</p>
-                                                                </div>
-                                                                <span className="font-medium">{formatPrice(part.total_price)}</span>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            {/* Cost Breakdown */}
-                                            <div className="p-6 bg-gray-50">
-                                                <div className="space-y-2">
-                                                    <div className="flex justify-between text-sm">
-                                                        <span className="text-gray-500">Labor Cost</span>
-                                                        <span>{formatPrice(jobOrder.labor_cost)}</span>
-                                                    </div>
-                                                    <div className="flex justify-between text-sm">
-                                                        <span className="text-gray-500">Parts Cost</span>
-                                                        <span>{formatPrice(jobOrder.parts_cost)}</span>
-                                                    </div>
-                                                    <div className="flex justify-between text-lg font-bold border-t pt-2">
-                                                        <span>Total Cost</span>
-                                                        <span className="text-indigo-600">{formatPrice(jobOrder.total_cost)}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
+                                    ))}
                                 </div>
-                            )}
+                            </div>
+
+                            {/* Totals */}
+                            <div className="p-3 bg-gray-50 border-b no-break">
+                                <div className="space-y-1 text-xs">
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-500">Subtotal</span>
+                                        <span>{formatPrice(sale.subtotal)}</span>
+                                    </div>
+                                    <div className="flex justify-between font-bold border-t pt-1">
+                                        <span>Total</span>
+                                        <span className="text-indigo-600">{formatPrice(sale.total)}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Payment Info */}
+                            <div className="p-3 border-b no-break">
+                                <div className="flex items-center justify-between p-2 bg-green-50 border border-green-200 rounded">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center text-green-600">
+                                            <PaymentIcon method={sale.payment_method} />
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] text-green-700">Payment</p>
+                                            <p className="text-xs font-semibold capitalize text-green-800">{sale.payment_method}</p>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-[10px] text-green-700">Paid</p>
+                                        <p className="text-xs font-bold text-green-800">{formatPrice(sale.amount_paid)}</p>
+                                    </div>
+                                </div>
+                                {sale.change > 0 && (
+                                    <p className="text-center mt-1 text-[10px] text-gray-500">
+                                        Change: <span className="font-medium text-gray-700">{formatPrice(sale.change)}</span>
+                                    </p>
+                                )}
+                            </div>
 
                             {/* Footer */}
-                            <div className={`p-6 text-center border-t ${jobOrder ? 'bg-indigo-50 border-indigo-200' : 'bg-gray-100'}`}>
-                                <p className={`text-sm font-medium ${jobOrder ? 'text-indigo-900' : 'text-gray-600'}`}>Thank you for your purchase!</p>
-                                <p className={`text-xs mt-2 ${jobOrder ? 'text-indigo-600' : 'text-gray-400'}`}>
-                                    {jobOrder ? 'Keep this page bookmarked to track your job order status.' : 'This is an electronic receipt. Keep for your records.'}
+                            <div className="p-3 bg-gray-50 text-center no-break">
+                                <p className="text-[10px] text-gray-600">Thank you for your purchase!</p>
+                                <p className="text-[8px] text-gray-400 mt-1">
+                                    {sale.branch.name} • {sale.user.name}
                                 </p>
                             </div>
                         </div>
+
+                        {/* Job Order Dropdown - Only show if services were purchased */}
+                        {jobOrder && (
+                            <div className="border-t-4 border-indigo-100">
+                                {/* Dropdown Button */}
+                                <button
+                                    onClick={() => setShowJobOrder(!showJobOrder)}
+                                    className="w-full p-4 bg-gradient-to-r from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 transition-colors flex items-center justify-between no-print"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center">
+                                            <Wrench className="h-5 w-5 text-white" />
+                                        </div>
+                                        <div className="text-left">
+                                            <p className="font-bold text-indigo-900">Track Your Service</p>
+                                            <p className="text-xs text-indigo-600">Click to view job order status</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <StatusBadge status={jobOrder.status} />
+                                        {showJobOrder ? (
+                                            <ChevronUp className="h-6 w-6 text-indigo-600" />
+                                        ) : (
+                                            <ChevronDown className="h-6 w-6 text-indigo-600 animate-bounce" />
+                                        )}
+                                    </div>
+                                </button>
+
+                                {/* Job Order Details - Collapsible */}
+                                {showJobOrder && (
+                                    <div className="bg-white animate-in slide-in-from-top duration-300">
+                                        {/* Job Order Header */}
+                                        <div className="p-6 border-b">
+                                            <div className="flex justify-between items-start mb-4">
+                                                <div>
+                                                    <p className="text-sm text-gray-500">Tracking Code</p>
+                                                    <p className="font-mono font-bold text-lg text-indigo-600">{jobOrder.tracking_code}</p>
+                                                </div>
+                                                <StatusBadge status={jobOrder.status} />
+                                            </div>
+                                            <div className="text-sm text-gray-500">
+                                                <p>Created: {formatDate(jobOrder.created_at)}</p>
+                                                <p>Last Updated: {formatDate(jobOrder.updated_at)}</p>
+                                                {jobOrder.completed_at && (
+                                                    <p className="text-green-600 font-medium">Completed: {formatDate(jobOrder.completed_at)}</p>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Mechanic Info */}
+                                        <div className="p-6 bg-gray-50 border-b">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center">
+                                                    <Wrench className="h-6 w-6 text-indigo-600" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm text-gray-500">Assigned Mechanic</p>
+                                                    <p className="font-semibold text-gray-900">{jobOrder.mechanic.name}</p>
+                                                    {jobOrder.mechanic.specialization && (
+                                                        <p className="text-xs text-gray-500">{jobOrder.mechanic.specialization}</p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Job Description */}
+                                        <div className="p-6 border-b">
+                                            <h3 className="font-semibold text-gray-900 mb-2">Job Description</h3>
+                                            <p className="text-gray-700 bg-gray-50 p-3 rounded-lg">{jobOrder.description}</p>
+                                        </div>
+
+                                        {/* Parts Used */}
+                                        {jobOrder.parts.length > 0 && (
+                                            <div className="p-6 border-b">
+                                                <h3 className="font-semibold text-gray-900 mb-3">Parts Used</h3>
+                                                <div className="space-y-2">
+                                                    {jobOrder.parts.map((part) => (
+                                                        <div key={part.id} className="flex justify-between text-sm bg-gray-50 p-3 rounded-lg">
+                                                            <div>
+                                                                <p className="font-medium">{part.part_name}</p>
+                                                                <p className="text-gray-500">Qty: {part.quantity}</p>
+                                                            </div>
+                                                            <span className="font-medium">{formatPrice(part.total_price)}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Cost Breakdown */}
+                                        <div className="p-6 bg-gray-50">
+                                            <div className="space-y-2">
+                                                <div className="flex justify-between text-sm">
+                                                    <span className="text-gray-500">Labor Cost</span>
+                                                    <span>{formatPrice(jobOrder.labor_cost)}</span>
+                                                </div>
+                                                <div className="flex justify-between text-sm">
+                                                    <span className="text-gray-500">Parts Cost</span>
+                                                    <span>{formatPrice(jobOrder.parts_cost)}</span>
+                                                </div>
+                                                <div className="flex justify-between text-lg font-bold border-t pt-2">
+                                                    <span>Total Cost</span>
+                                                    <span className="text-indigo-600">{formatPrice(jobOrder.total_cost)}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Footer */}
+                        <div className={`p-6 text-center border-t ${jobOrder ? 'bg-indigo-50 border-indigo-200' : 'bg-gray-100'}`}>
+                            <p className={`text-sm font-medium ${jobOrder ? 'text-indigo-900' : 'text-gray-600'}`}>Thank you for your purchase!</p>
+                            <p className={`text-xs mt-2 ${jobOrder ? 'text-indigo-600' : 'text-gray-400'}`}>
+                                {jobOrder ? 'Keep this page bookmarked to track your job order status.' : 'This is an electronic receipt. Keep for your records.'}
+                            </p>
+                        </div>
                     </div>
                 </div>
+            </div>
         </>
     );
 }

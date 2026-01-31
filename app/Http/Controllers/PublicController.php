@@ -18,7 +18,7 @@ class PublicController extends Controller
     {
         $branchName = $request->query('branch');
         $branch = $branchName ? Branch::where('name', $branchName)->first() : null;
-        
+
         if (!$branchName) {
             $products = collect([]);
         } else {
@@ -26,9 +26,11 @@ class PublicController extends Controller
                 ->whereHas('branches', function ($q) use ($branchName) {
                     $q->where('branches.name', $branchName);
                 })
-                ->with(['branches' => function ($q) {
-                    $q->select('branches.id', 'name')->withPivot('stock_quantity');
-                }])
+                ->with([
+                    'branches' => function ($q) {
+                        $q->select('branches.id', 'name')->withPivot('stock_quantity');
+                    }
+                ])
                 ->get();
         }
 
@@ -39,17 +41,19 @@ class PublicController extends Controller
                 $pinnedProducts = $section->products()
                     ->when($branch, function ($query) use ($branch) {
                         // Get products pinned to this section for this branch OR site-wide
-                        $query->where(function($q) use ($branch) {
+                        $query->where(function ($q) use ($branch) {
                             $q->where('product_section_pins.branch_id', $branch->id)
-                              ->orWhereNull('product_section_pins.branch_id');
+                                ->orWhereNull('product_section_pins.branch_id');
                         });
                     }, function ($query) {
                         // No branch selected, show only site-wide pins
                         $query->whereNull('product_section_pins.branch_id');
                     })
-                    ->with(['branches' => function($q) {
-                        $q->select('branches.id', 'name')->withPivot('stock_quantity');
-                    }])
+                    ->with([
+                        'branches' => function ($q) {
+                            $q->select('branches.id', 'name')->withPivot('stock_quantity');
+                        }
+                    ])
                     ->get();
 
                 return [
@@ -63,7 +67,7 @@ class PublicController extends Controller
 
         // Get company email from settings
         $companyEmail = \App\Models\Setting::where('key', 'company_email')->value('value') ?? 'info@jspotmotors.com';
-        
+
         // Get theme colors from settings
         $themeColors = [
             'primary' => \App\Models\Setting::where('key', 'theme_primary_color')->value('value') ?? 'purple',
@@ -75,9 +79,11 @@ class PublicController extends Controller
         $tagline = \App\Models\Setting::where('key', 'site_tagline')->value('value') ?? 'Your Trusted Auto Parts Dealer';
 
         // Fetch global search index (all products with branches)
-        $searchIndex = Product::with(['branches' => function ($q) {
-            $q->select('branches.id', 'name');
-        }])->select('id', 'name', 'price', 'description')->get();
+        $searchIndex = Product::with([
+            'branches' => function ($q) {
+                $q->select('branches.id', 'name');
+            }
+        ])->select('id', 'name', 'price', 'description')->get();
 
         return Inertia::render('Public/Index', [
             'products' => $products,
@@ -107,15 +113,17 @@ class PublicController extends Controller
                     $q->where('product_section_pins.branch_id', $branch->id)
                         ->orWhereNull('product_section_pins.branch_id');
                 })
-                ->with(['branches' => function ($q) {
-                    $q->select('branches.id', 'name')->withPivot('stock_quantity');
-                }])
+                ->with([
+                    'branches' => function ($q) {
+                        $q->select('branches.id', 'name')->withPivot('stock_quantity');
+                    }
+                ])
                 ->get();
         }
 
         // Get company email from settings
         $companyEmail = \App\Models\Setting::where('key', 'company_email')->value('value') ?? 'info@jspotmotors.com';
-        
+
         // Get theme colors from settings
         $themeColors = [
             'primary' => \App\Models\Setting::where('key', 'theme_primary_color')->value('value') ?? 'purple',
@@ -127,9 +135,11 @@ class PublicController extends Controller
         $tagline = \App\Models\Setting::where('key', 'site_tagline')->value('value') ?? 'Your Trusted Auto Parts Dealer';
 
         // Fetch global search index (all products with branches)
-        $searchIndex = \App\Models\Product::with(['branches' => function ($q) {
-            $q->select('branches.id', 'name');
-        }])->select('id', 'name', 'price', 'description')->get();
+        $searchIndex = \App\Models\Product::with([
+            'branches' => function ($q) {
+                $q->select('branches.id', 'name');
+            }
+        ])->select('id', 'name', 'price', 'description')->get();
 
         return Inertia::render('Public/Section', [
             'section' => $section,
@@ -151,14 +161,15 @@ class PublicController extends Controller
 
     public function searchJob(TrackJobRequest $request)
     {
-        $job = JobOrder::where('tracking_code', $request->tracking_code)
+        $code = trim($request->tracking_code);
+        $job = JobOrder::where('tracking_code', $code)
             ->with('branch:id,name')
             ->first();
 
         // Since validation passes, we know tracking_code exists, 
         // but double check if it returns a model just in case of race condition or soft deletes logic
         if (!$job) {
-             return back()->withErrors(['tracking_code' => 'Job order not found.']);
+            return back()->withErrors(['tracking_code' => 'Job order not found.']);
         }
 
         return back()->with('job', $job);

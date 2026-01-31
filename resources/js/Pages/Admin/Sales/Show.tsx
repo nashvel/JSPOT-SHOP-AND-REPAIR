@@ -171,7 +171,7 @@ export default function Show({ sale, receiptUrl }: Props) {
                             </div>
 
                             {/* Items */}
-                            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+                            <div className="bg-white rounded-xl shadow-sm overflow-hidden overflow-x-auto">
                                 <div className="p-4 border-b">
                                     <h3 className="font-semibold text-gray-900">Items Purchased</h3>
                                 </div>
@@ -288,8 +288,8 @@ export default function Show({ sale, receiptUrl }: Props) {
                                 <h3 className="font-semibold text-gray-900 mb-4 text-center">Customer Receipt</h3>
                                 <div className="flex flex-col items-center">
                                     <div className="bg-white p-4 rounded-lg border-2 border-gray-200">
-                                        <QRCodeSVG 
-                                            value={receiptUrl} 
+                                        <QRCodeSVG
+                                            value={receiptUrl}
                                             size={180}
                                             level="H"
                                         />
@@ -315,13 +315,13 @@ export default function Show({ sale, receiptUrl }: Props) {
                                     <div className="space-y-3">
                                         {sale.returns.map(ret => (
                                             <div key={ret.id} className={`p-3 rounded-lg ${ret.status === 'pending' ? 'bg-yellow-50 border border-yellow-200' :
-                                                    ret.status === 'approved' ? 'bg-green-50 border border-green-200' :
-                                                        'bg-red-50 border border-red-200'
+                                                ret.status === 'approved' ? 'bg-green-50 border border-green-200' :
+                                                    'bg-red-50 border border-red-200'
                                                 }`}>
                                                 <div className="flex justify-between items-start">
                                                     <span className="text-sm font-medium">Qty: {ret.quantity}</span>
                                                     <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${ret.status === 'pending' ? 'bg-yellow-200' :
-                                                            ret.status === 'approved' ? 'bg-green-200' : 'bg-red-200'
+                                                        ret.status === 'approved' ? 'bg-green-200' : 'bg-red-200'
                                                         }`}>
                                                         {ret.status}
                                                     </span>

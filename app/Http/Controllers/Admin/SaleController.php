@@ -60,14 +60,14 @@ class SaleController extends Controller
     public function create(Request $request)
     {
         $user = auth()->user();
-        
+
         // Determine which branch to use
         $branchId = $user->branch_id; // Branch users use their own branch
-        
+
         // System Admin: use selected branch or default to first branch
         if (!$branchId) {
             $branchId = $request->branch_id ?? Branch::first()?->id;
-            
+
             if (!$branchId) {
                 return redirect()->route('admin.dashboard')
                     ->with('error', 'No branches available. Please create a branch first.');
@@ -139,10 +139,10 @@ class SaleController extends Controller
         ]);
 
         $user = auth()->user();
-        
+
         // Determine which branch to use
         $branchId = $user->branch_id ?? $validated['branch_id'] ?? null;
-        
+
         if (!$branchId) {
             return back()->withErrors(['branch_id' => 'Branch is required.']);
         }
@@ -234,7 +234,7 @@ class SaleController extends Controller
             }
 
             // If there are services, create a job order
-            if ($hasServices && $validated['mechanic_id']) {
+            if ($hasServices) {
                 $serviceDescription = collect($serviceItems)->map(function ($item) {
                     return "{$item['product']->name} (x{$item['quantity']})";
                 })->join(', ');
@@ -248,15 +248,15 @@ class SaleController extends Controller
                 });
 
                 // Use custom description if provided, otherwise use auto-generated service list
-                $jobDescription = !empty($validated['job_description']) 
-                    ? $validated['job_description'] 
+                $jobDescription = !empty($validated['job_description'])
+                    ? $validated['job_description']
                     : "Services: {$serviceDescription}";
 
                 $jobOrder = \App\Models\JobOrder::create([
                     'tracking_code' => \App\Models\JobOrder::generateTrackingCode(),
                     'branch_id' => $branchId,
                     'sale_id' => $sale->id,
-                    'mechanic_id' => $validated['mechanic_id'],
+                    'mechanic_id' => $validated['mechanic_id'] ?? null,
                     'customer_name' => $validated['customer_name'],
                     'contact_number' => $validated['contact_number'],
                     'vehicle_details' => "Plate: {$validated['plate_number']}",
