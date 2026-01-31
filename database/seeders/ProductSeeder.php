@@ -194,11 +194,15 @@ class ProductSeeder extends Seeder
         }
 
         // Truncate tables to prevent duplicates
-        \DB::statement('SET FOREIGN_KEY_CHECKS=0;');
-        \DB::table('product_section_pins')->truncate();
-        \DB::table('branch_product')->truncate();
-        Product::truncate();
-        \DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        if (\DB::getDriverName() === 'mysql') {
+            \DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        }
+        \DB::table('product_section_pins')->delete();
+        \DB::table('branch_product')->delete();
+        Product::query()->delete();
+        if (\DB::getDriverName() === 'mysql') {
+            \DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        }
 
         $branches = Branch::all();
         $premiumSection = ProductSection::where('slug', 'premium-parts-accessories')->first();

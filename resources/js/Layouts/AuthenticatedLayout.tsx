@@ -304,7 +304,7 @@ export default function Authenticated({
                 </div>
 
                 {/* Header with Notification */}
-                <header className="bg-white border-b border-gray-200 sticky top-0 z-30 px-6 py-3 flex items-center justify-between">
+                <header className={`bg-white border-b border-gray-200 sticky top-0 z-30 px-6 py-3 flex items-center justify-between ${header ? '' : 'hidden lg:flex'}`}>
                     <h1 className="text-xl font-semibold text-gray-800">
                         {header}
                     </h1>
