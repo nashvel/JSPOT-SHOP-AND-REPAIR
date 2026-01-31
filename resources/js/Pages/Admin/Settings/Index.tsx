@@ -1,5 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, usePage } from '@inertiajs/react';
+import { Head, usePage, router } from '@inertiajs/react';
 import { useState } from 'react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
@@ -149,9 +149,15 @@ function SettingsGroup({ group, settings }: { group: string, settings: any[] }) 
     const formatKey = (key: string) => key.split('_').map(capitalize).join(' ');
 
     const handleSave = () => {
-        // Here you would typically make an API call to save the changes
-        console.log('Saving settings for', group, values);
-        setIsEditing(false);
+        // Prepare data for submission
+        router.post(route('admin.settings.update'), {
+            settings: values
+        }, {
+            preserveScroll: true,
+            onSuccess: () => {
+                setIsEditing(false);
+            }
+        });
     };
 
     const handleCancel = () => {
@@ -235,8 +241,8 @@ function SettingsGroup({ group, settings }: { group: string, settings: any[] }) 
                                 onChange={(e) => updateValue(setting.id, e.target.value)}
                                 disabled={!isEditing}
                                 className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm transition-colors ${isEditing
-                                        ? 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500'
-                                        : 'border-transparent bg-gray-50 text-gray-500 cursor-not-allowed'
+                                    ? 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500'
+                                    : 'border-transparent bg-gray-50 text-gray-500 cursor-not-allowed'
                                     }`}
                             />
                         )}

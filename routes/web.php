@@ -124,6 +124,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
             'settings' => $settings
         ]);
     })->name('admin.settings.index');
+    
+    Route::post('admin/settings', [\App\Http\Controllers\Admin\SettingsController::class, 'update'])->name('admin.settings.update');
 });
 
 Route::middleware('auth')->group(function () {

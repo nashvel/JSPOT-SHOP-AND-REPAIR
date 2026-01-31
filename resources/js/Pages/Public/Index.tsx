@@ -164,12 +164,12 @@ export default function Index({ products, branches, currentBranch, searchIndex, 
                                     <div key={section.id}>
                                         <div className="px-4 sm:px-6 lg:px-8 mb-6">
                                             <div className="flex items-center justify-between">
-                                                <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-purple-900 uppercase tracking-tight">
+                                                <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-primary-900 uppercase tracking-tight">
                                                     {section.name}
                                                 </h2>
                                                 <button
                                                     onClick={() => router.get(`/section/${section.slug}`, { branch: currentBranch || '' }, { preserveState: false })}
-                                                    className="text-purple-600 hover:text-purple-800 font-semibold flex items-center gap-1 text-sm"
+                                                    className="text-primary-600 hover:text-primary-800 font-semibold flex items-center gap-1 text-sm"
                                                 >
                                                     View All <ChevronRight className="w-4 h-4" />
                                                 </button>
@@ -196,7 +196,7 @@ export default function Index({ products, branches, currentBranch, searchIndex, 
                             /* Fallback: show all products without sections */
                             <div className="px-4 sm:px-6 lg:px-8">
                                 <div className="mx-auto max-w-7xl mb-6">
-                                    <h2 className="text-xl sm:text-2xl font-black text-purple-900 uppercase tracking-tight">
+                                    <h2 className="text-xl sm:text-2xl font-black text-primary-900 uppercase tracking-tight">
                                         All Products
                                     </h2>
                                 </div>
@@ -221,6 +221,7 @@ export default function Index({ products, branches, currentBranch, searchIndex, 
                         nearestBranch={nearestBranch}
                         isLocating={isLocating}
                         onFindNearest={findNearestStore}
+                        themeColors={themeColors}
                     />
                 )}
             </div>
@@ -234,7 +235,7 @@ export default function Index({ products, branches, currentBranch, searchIndex, 
             {/* Newsletter */}
             <div className="bg-white py-16 border-t border-gray-100">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
-                    <h2 className="text-2xl sm:text-3xl font-bold text-purple-900 mb-4">Stay Updated</h2>
+                    <h2 className="text-2xl sm:text-3xl font-bold text-primary-900 mb-4">Stay Updated</h2>
                     <p className="text-gray-600 mb-8 max-w-xl mx-auto">
                         Subscribe to our newsletter for exclusive deals and new arrivals.
                     </p>
@@ -242,9 +243,9 @@ export default function Index({ products, branches, currentBranch, searchIndex, 
                         <input
                             type="email"
                             placeholder="Enter your email"
-                            className="flex-1 px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-400 focus:border-purple-400"
+                            className="flex-1 px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-400 focus:border-primary-400"
                         />
-                        <button type="submit" className="bg-purple-700 text-white px-6 py-3 rounded-lg font-bold hover:bg-purple-800 transition-colors">
+                        <button type="submit" className="bg-primary-700 text-white px-6 py-3 rounded-lg font-bold hover:bg-primary-800 transition-colors">
                             Subscribe
                         </button>
                     </form>
@@ -262,7 +263,7 @@ export default function Index({ products, branches, currentBranch, searchIndex, 
                             <InputLabel htmlFor="branch" value="Select Pickup Branch" />
                             <select
                                 id="branch"
-                                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-purple-500 focus:ring-purple-500"
+                                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-primary-500 focus:ring-primary-500"
                                 value={data.branch_id}
                                 onChange={(e) => setData('branch_id', e.target.value)}
                                 required
