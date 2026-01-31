@@ -1,6 +1,6 @@
-import { PropsWithChildren, ReactNode } from 'react';
+import { PropsWithChildren, ReactNode, useState } from 'react';
 import { Link, usePage, router } from '@inertiajs/react';
-import { LayoutDashboard, Users, FileText, Settings, LogOut, Shield, Search, Folder, LifeBuoy, MoreHorizontal, PanelLeftClose, ShoppingCart, ClipboardList, Package, ArrowLeftRight, Store, XCircle, MapPin, Receipt, BarChart3, PieChart, ClipboardCheck } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, Settings, LogOut, Shield, Search, Folder, LifeBuoy, MoreHorizontal, PanelLeftClose, ShoppingCart, ClipboardList, Package, ArrowLeftRight, Store, XCircle, MapPin, Receipt, BarChart3, PieChart, ClipboardCheck, Menu } from 'lucide-react';
 import ApplicationLogo from '@/Components/ApplicationLogo';
 
 export default function Authenticated({
@@ -8,6 +8,7 @@ export default function Authenticated({
 }: PropsWithChildren<{ header?: ReactNode }>) {
     const { auth, impersonating } = usePage().props as any;
     const user = auth.user;
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     // Icon mapping
     const iconMap: Record<string, any> = {
@@ -49,9 +50,16 @@ export default function Authenticated({
 
     return (
         <div className="flex h-screen overflow-hidden bg-gray-50 text-sm">
+            {/* Mobile Sidebar Overlay */}
+            {isSidebarOpen && (
+                <div
+                    className="fixed inset-0 bg-gray-900/50 z-40 lg:hidden backdrop-blur-sm"
+                    onClick={() => setIsSidebarOpen(false)}
+                />
+            )}
+
             {/* Sidebar */}
-            <div className="w-64 border-r border-gray-200 bg-white flex flex-col">
-                {/* Impersonation Banner */}
+            <div className={`fixed inset-y-0 left-0 z-50 w-64 border-r border-gray-200 bg-white flex flex-col transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
                 {/* Impersonation Banner */}
                 {impersonating?.active && (
                     <div className="bg-amber-500 text-white px-4 py-2 flex items-center justify-between">
@@ -78,15 +86,18 @@ export default function Authenticated({
                 <div className="p-4 border-b border-gray-100">
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-3">
-                            <div className="h-8 w-8 rounded bg-gray-900 flex items-center justify-center text-white">
-                                <ApplicationLogo className="h-5 w-5 fill-current" />
-                            </div>
+                            <img src="/user.png" alt="Profile" className="h-8 w-8 rounded-md object-cover bg-gray-100" />
                             <div className="min-w-0">
                                 <p className="font-semibold text-gray-900 truncate">{user.name}</p>
                                 <p className="text-xs text-gray-500 truncate capitalize">{user.role?.display_name || 'User'}</p>
                             </div>
                         </div>
-                        <PanelLeftClose className="h-4 w-4 text-gray-400" />
+                        <button
+                            onClick={() => setIsSidebarOpen(false)}
+                            className="lg:hidden text-gray-400 hover:text-gray-600"
+                        >
+                            <PanelLeftClose className="h-5 w-5" />
+                        </button>
                     </div>
                     {/* Search */}
                     <div className="relative">
@@ -119,6 +130,7 @@ export default function Authenticated({
                                             <Link
                                                 key={menu.id}
                                                 href={route(menu.route)}
+                                                onClick={() => setIsSidebarOpen(false)}
                                                 className={`flex items-center gap-3 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${active
                                                     ? 'bg-gray-100 text-gray-900'
                                                     : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
@@ -143,6 +155,7 @@ export default function Authenticated({
                             <div className="space-y-1">
                                 <Link
                                     href={route('admin.super-admin.index')}
+                                    onClick={() => setIsSidebarOpen(false)}
                                     className={`flex items-center gap-3 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${route().current('admin.super-admin.*')
                                         ? 'bg-gray-100 text-gray-900'
                                         : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
@@ -171,6 +184,22 @@ export default function Authenticated({
 
             {/* Main Content */}
             <div className="flex-1 flex flex-col overflow-hidden">
+                {/* Mobile Header */}
+                <div className="lg:hidden bg-white border-b border-gray-200 p-4 flex items-center justify-between sticky top-0 z-30">
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => setIsSidebarOpen(true)}
+                            className="-ml-2 p-2 rounded-md text-gray-600 hover:bg-gray-100"
+                        >
+                            <Menu className="h-6 w-6" />
+                        </button>
+                        <div className="flex items-center gap-2">
+                            <img src="/jspot-removebg-preview.png" alt="JSPOT" className="h-8 w-auto object-contain" />
+                            <span className="font-bold text-gray-900">JSPOT POS</span>
+                        </div>
+                    </div>
+                </div>
+
                 {/* No top header bar - content flows freely like in the example image */}
                 <main className="flex-1 overflow-y-auto bg-white p-6 sm:p-8 [&::-webkit-scrollbar]:hidden">
                     {/* Inject Header Here if needed */}

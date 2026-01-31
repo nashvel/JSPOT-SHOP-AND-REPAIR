@@ -53,12 +53,12 @@ export default function Index({ sales, branches, filters, userBranchId }: Props)
     // Auto-search with debounce
     useEffect(() => {
         const timer = setTimeout(() => {
-            router.get(route('admin.sales.index'), { 
-                search, 
-                start_date: startDate, 
+            router.get(route('admin.sales.index'), {
+                search,
+                start_date: startDate,
                 end_date: endDate,
                 branch_id: branchId || undefined
-            }, { 
+            }, {
                 preserveState: true,
                 preserveScroll: true,
                 replace: true
@@ -101,10 +101,16 @@ export default function Index({ sales, branches, filters, userBranchId }: Props)
             <Head title="Sales Records" />
 
             <div className="py-8">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="mb-6">
-                        <h1 className="text-2xl font-bold text-gray-900">Sales Records</h1>
-                        <p className="text-gray-500">View and manage all completed sales</p>
+                <div className="w-full px-4 sm:px-6 lg:px-8">
+                    {/* Header Section */}
+                    <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                        <div>
+                            <h1 className="text-2xl font-bold text-gray-900">Sales Records</h1>
+                            <p className="text-gray-500">View and manage all completed sales</p>
+                        </div>
+                        <div className="flex gap-2">
+                            {/* Optional: Add actionable buttons here if needed in future (e.g. Export) */}
+                        </div>
                     </div>
 
                     {/* Filters */}
@@ -230,8 +236,8 @@ export default function Index({ sales, branches, filters, userBranchId }: Props)
                                             key={i}
                                             href={link.url || '#'}
                                             className={`px-3 py-1 rounded text-sm ${link.active
-                                                    ? 'bg-indigo-600 text-white'
-                                                    : 'bg-white border hover:bg-gray-100'
+                                                ? 'bg-indigo-600 text-white'
+                                                : 'bg-white border hover:bg-gray-100'
                                                 } ${!link.url ? 'opacity-50 cursor-not-allowed' : ''}`}
                                             dangerouslySetInnerHTML={{ __html: link.label }}
                                         />

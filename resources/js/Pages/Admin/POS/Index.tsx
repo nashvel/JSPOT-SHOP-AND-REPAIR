@@ -69,6 +69,7 @@ export default function Index({ products, services, categories, mechanics, emplo
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedPayment, setSelectedPayment] = useState<'cash' | 'gcash' | 'maya' | null>(null);
     const [showCheckout, setShowCheckout] = useState(false);
+    const [isCartOpen, setIsCartOpen] = useState(false);
 
     const { data, setData, post, processing, errors, reset } = useForm({
         customer_name: '',
@@ -206,6 +207,7 @@ export default function Index({ products, services, categories, mechanics, emplo
                 setCart([]);
                 setShowCheckout(false);
                 reset();
+                setIsCartOpen(false); // Close cart drawer on success if open
 
                 // Show success message
                 Swal.fire({
@@ -234,7 +236,7 @@ export default function Index({ products, services, categories, mechanics, emplo
         <AuthenticatedLayout>
             <Head title="Point of Sale" />
 
-            <div className="h-[calc(100vh-4rem)] flex overflow-hidden bg-gray-50">
+            <div className="h-[calc(100vh-4rem)] flex overflow-hidden bg-gray-50 relative">
 
                 {/* Main Content - Grid */}
                 <div className="flex-1 flex flex-col min-w-0">
@@ -242,10 +244,10 @@ export default function Index({ products, services, categories, mechanics, emplo
                     <div className="bg-white border-b border-gray-200 p-4 sticky top-0 z-10">
                         <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
 
-                            <div className="flex gap-4 w-full md:w-auto">
+                            <div className="flex gap-4 w-full md:w-auto items-center">
                                 {/* Branch Selector (System Admin Only) */}
                                 {canSelectBranch && branches.length > 0 && (
-                                    <div className="relative min-w-[200px]">
+                                    <div className="relative min-w-[200px] hidden md:block">
                                         <select
                                             value={selectedBranch}
                                             onChange={(e) => {
@@ -268,10 +270,10 @@ export default function Index({ products, services, categories, mechanics, emplo
                                 )}
 
                                 {/* Type Toggle */}
-                                <div className="flex p-1 bg-gray-100 rounded-lg">
+                                <div className="flex p-1 bg-gray-100 rounded-lg flex-1 md:flex-none">
                                     <button
                                         onClick={() => { setActiveTab('products'); setSelectedCategory('all'); setSearchQuery(''); }}
-                                        className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${activeTab === 'products'
+                                        className={`flex-1 md:flex-none px-4 py-2 rounded-md text-sm font-semibold transition-all ${activeTab === 'products'
                                             ? 'bg-white text-gray-900 shadow-sm'
                                             : 'text-gray-500 hover:text-gray-700'
                                             }`}
@@ -280,7 +282,7 @@ export default function Index({ products, services, categories, mechanics, emplo
                                     </button>
                                     <button
                                         onClick={() => { setActiveTab('services'); setSelectedCategory('all'); setSearchQuery(''); }}
-                                        className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${activeTab === 'services'
+                                        className={`flex-1 md:flex-none px-4 py-2 rounded-md text-sm font-semibold transition-all ${activeTab === 'services'
                                             ? 'bg-white text-gray-900 shadow-sm'
                                             : 'text-gray-500 hover:text-gray-700'
                                             }`}
@@ -289,8 +291,23 @@ export default function Index({ products, services, categories, mechanics, emplo
                                     </button>
                                 </div>
 
+                                {/* Cart Toggle Button (Mobile/Tablet Only) */}
+                                <button
+                                    onClick={() => setIsCartOpen(!isCartOpen)}
+                                    className="lg:hidden p-2.5 bg-indigo-600 text-white rounded-lg shadow-sm hover:bg-indigo-700 transition-colors relative"
+                                >
+                                    <ShoppingCart className="h-5 w-5" />
+                                    {cart.length > 0 && (
+                                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[1.25rem] text-center border-2 border-white">
+                                            {cart.length}
+                                        </span>
+                                    )}
+                                </button>
+                            </div>
+
+                            <div className="flex gap-4 w-full md:w-auto">
                                 {/* Category Dropdown */}
-                                <div className="relative min-w-[200px]">
+                                <div className="relative min-w-[150px] md:min-w-[200px] flex-1">
                                     <select
                                         value={selectedCategory}
                                         onChange={(e) => setSelectedCategory(e.target.value === 'all' ? 'all' : Number(e.target.value))}
@@ -307,25 +324,25 @@ export default function Index({ products, services, categories, mechanics, emplo
                                         <Menu className="h-4 w-4" />
                                     </div>
                                 </div>
-                            </div>
 
-                            {/* Search */}
-                            <div className="relative w-full md:w-80">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                                <input
-                                    type="text"
-                                    placeholder="Search by name or SKU..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-sm"
-                                />
+                                {/* Search */}
+                                <div className="relative flex-1 md:w-80">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                    <input
+                                        type="text"
+                                        placeholder="Search..."
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-sm"
+                                    />
+                                </div>
                             </div>
                         </div>
                     </div>
 
                     {/* Grid */}
                     <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-gray-50">
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
                             {filteredItems.map(item => {
                                 const stock = item.type === 'product' ? (item.branches[0]?.pivot?.stock_quantity || 0) : null;
                                 const cartItem = cart.find(c => c.product.id === item.id);
@@ -384,16 +401,37 @@ export default function Index({ products, services, categories, mechanics, emplo
                     </div>
                 </div>
 
+                {/* Mobile Cart Overlay */}
+                {isCartOpen && (
+                    <div
+                        className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-30 lg:hidden"
+                        onClick={() => setIsCartOpen(false)}
+                    />
+                )}
+
                 {/* Right Sidebar - Cart */}
-                <div className="w-96 bg-white border-l border-gray-200 flex flex-col h-full shadow-2xl relative z-20">
-                    <div className="p-4 border-b border-gray-200">
-                        <div className="flex items-center justify-between mb-1">
-                            <h2 className="font-bold text-xl text-gray-900">Current Sale</h2>
-                            <span className="px-2 py-0.5 bg-gray-100 text-gray-500 rounded text-xs font-medium">
-                                {cart.length} items
-                            </span>
+                <div className={`
+                    fixed inset-y-0 right-0 z-40 w-80 lg:w-96 bg-white border-l border-gray-200 flex flex-col h-full shadow-2xl transition-transform duration-300 transform
+                    lg:relative lg:translate-x-0 lg:z-auto
+                    ${isCartOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}
+                `}>
+                    <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+                        <div>
+                            <div className="flex items-center gap-2 mb-1">
+                                <h2 className="font-bold text-xl text-gray-900">Current Sale</h2>
+                                <span className="px-2 py-0.5 bg-gray-100 text-gray-500 rounded text-xs font-medium">
+                                    {cart.length} items
+                                </span>
+                            </div>
+                            <p className="text-xs text-gray-500">Employee: {employee.name}</p>
                         </div>
-                        <p className="text-xs text-gray-500">Employee: {employee.name}</p>
+                        {/* Close Cart Button (Mobile Only) */}
+                        <button
+                            onClick={() => setIsCartOpen(false)}
+                            className="lg:hidden p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full"
+                        >
+                            <X className="h-5 w-5" />
+                        </button>
                     </div>
 
                     <div className="flex-1 overflow-y-auto p-4 space-y-4">

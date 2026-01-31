@@ -54,8 +54,8 @@ class BranchController extends Controller
             'password' => 'required|string|min:8',
             'address' => 'nullable|string|max:500',
             'contact_number' => 'nullable|string|max:20',
-            'latitude' => 'nullable|numeric',
-            'longitude' => 'nullable|numeric',
+            'latitude' => 'nullable|numeric|between:-90,90',
+            'longitude' => 'nullable|numeric|between:-180,180',
             'is_main' => 'boolean',
             'menus' => 'array',
             'menus.*' => 'exists:menus,id',
@@ -111,8 +111,8 @@ class BranchController extends Controller
             'email' => 'required|email|unique:branches,email,' . $branch->id,
             'address' => 'nullable|string|max:500',
             'contact_number' => 'nullable|string|max:20',
-            'latitude' => 'nullable|numeric',
-            'longitude' => 'nullable|numeric',
+            'latitude' => 'nullable|numeric|between:-90,90',
+            'longitude' => 'nullable|numeric|between:-180,180',
             'is_main' => 'boolean',
             'menus' => 'array',
             'menus.*' => 'exists:menus,id',
@@ -230,8 +230,8 @@ class BranchController extends Controller
     public function updateCoordinates(Request $request, Branch $branch)
     {
         $validated = $request->validate([
-            'latitude' => 'required|numeric',
-            'longitude' => 'required|numeric',
+            'latitude' => 'required|numeric|between:-90,90',
+            'longitude' => 'required|numeric|between:-180,180',
         ]);
 
         $branch->update([

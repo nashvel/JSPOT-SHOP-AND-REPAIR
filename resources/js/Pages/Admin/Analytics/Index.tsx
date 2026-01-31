@@ -53,7 +53,7 @@ export default function AnalyticsIndex({ auth, branches, selectedBranch, canFilt
                     <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                         <div className="p-6">
                             {/* Header with Branch Filter */}
-                            <div className="flex justify-between items-center mb-6">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                                 <div>
                                     <h2 className="text-2xl font-bold text-gray-900">Analytics & Reports</h2>
                                     <p className="text-sm text-gray-600 mt-1">
@@ -61,12 +61,12 @@ export default function AnalyticsIndex({ auth, branches, selectedBranch, canFilt
                                     </p>
                                 </div>
                                 {canFilterBranches && branches.length > 0 && (
-                                    <div className="flex items-center gap-2">
-                                        <label className="text-sm text-gray-600">Branch:</label>
+                                    <div className="flex items-center gap-2 w-full md:w-auto">
+                                        <label className="text-sm text-gray-600 whitespace-nowrap">Branch:</label>
                                         <select
                                             value={branchId}
                                             onChange={(e) => setBranchId(e.target.value)}
-                                            className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                            className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 w-full md:min-w-[200px]"
                                         >
                                             <option value="">All Branches</option>
                                             {branches.map((branch) => (
@@ -81,7 +81,7 @@ export default function AnalyticsIndex({ auth, branches, selectedBranch, canFilt
 
                             {/* Tabs */}
                             <div className="border-b border-gray-200 mb-6">
-                                <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+                                <nav className="-mb-px flex md:space-x-8 overflow-x-auto [&::-webkit-scrollbar]:hidden w-full" aria-label="Tabs">
                                     {tabs.map((tab) => {
                                         const Icon = tab.icon;
                                         return (
@@ -89,7 +89,7 @@ export default function AnalyticsIndex({ auth, branches, selectedBranch, canFilt
                                                 key={tab.id}
                                                 onClick={() => setActiveTab(tab.id)}
                                                 className={`
-                                                    whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2
+                                                    whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 flex-1 md:flex-none justify-center md:justify-start
                                                     ${activeTab === tab.id
                                                         ? 'border-indigo-500 text-indigo-600'
                                                         : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}

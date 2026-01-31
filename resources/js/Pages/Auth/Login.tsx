@@ -100,10 +100,12 @@ export default function Login({
 
                 <div>
                     <PrimaryButton
-                        className="w-full justify-center py-3 bg-gradient-to-r from-cyan-400 to-purple-500 hover:opacity-90 transition-opacity rounded-full border-0 text-white font-bold tracking-wider shadow-lg"
+                        className="w-full justify-center py-3 bg-white hover:bg-gray-50 transition-colors rounded-full border border-gray-200 shadow-lg"
                         disabled={processing}
                     >
-                        LOGIN
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500 font-bold tracking-wider">
+                            LOGIN
+                        </span>
                     </PrimaryButton>
                 </div>
 

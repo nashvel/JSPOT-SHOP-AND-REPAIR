@@ -3,6 +3,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
 import React from 'react';
 import { ChevronRight, ChevronDown, Navigation, Plus, Edit, Trash2, Users, Store } from 'lucide-react';
+import Swal from 'sweetalert2';
 
 interface Staff {
     id: number;
@@ -50,6 +51,69 @@ export default function Index({ branches }: Props) {
         if (confirm(`Are you sure you want to delete "${branchName}"?`)) {
             router.delete(route('admin.branches.destroy', branchId));
         }
+    };
+
+    const handleAddStaff = (branch: Branch) => {
+        // @ts-ignore
+        Swal.fire({
+            title: `Add Staff to ${branch.name}`,
+            html: `
+                <div class="space-y-4 text-left">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                        <input id="swal-name" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" placeholder="e.g. Nacht" />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                        <input id="swal-email" type="email" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" placeholder="e.g. example@gmil.com" />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                        <input id="swal-password" type="password" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" placeholder="••••••••" />
+                    </div>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'Add Staff',
+            confirmButtonColor: '#4F46E5',
+            cancelButtonColor: '#6B7280',
+            focusConfirm: false,
+            preConfirm: () => {
+                const name = (document.getElementById('swal-name') as HTMLInputElement).value;
+                const email = (document.getElementById('swal-email') as HTMLInputElement).value;
+                const password = (document.getElementById('swal-password') as HTMLInputElement).value;
+
+                if (!name || !email || !password) {
+                    // @ts-ignore
+                    Swal.showValidationMessage('All fields are required');
+                    return false;
+                }
+                return { name, email, password };
+            }
+        }).then((result: any) => {
+            if (result.isConfirmed) {
+                router.post(route('admin.branches.staff.add', branch.id), result.value, {
+                    onSuccess: () => {
+                        // @ts-ignore
+                        Swal.fire({
+                            title: 'Success!',
+                            text: 'Staff member has been added successfully.',
+                            icon: 'success',
+                            confirmButtonColor: '#4F46E5',
+                        });
+                    },
+                    onError: (errors) => {
+                        // @ts-ignore
+                        Swal.fire({
+                            title: 'Error!',
+                            text: Object.values(errors).flat().join('\n'),
+                            icon: 'error',
+                            confirmButtonColor: '#EF4444',
+                        });
+                    }
+                });
+            }
+        });
     };
 
     return (
@@ -187,13 +251,13 @@ export default function Index({ branches }: Props) {
                                             <tr className="bg-gray-50/30">
                                                 <td className="px-6 py-2"></td>
                                                 <td colSpan={5} className="px-6 py-2 pl-16">
-                                                    <Link
-                                                        href={route('admin.branches.edit', branch.id)}
+                                                    <button
+                                                        onClick={() => handleAddStaff(branch)}
                                                         className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-medium"
                                                     >
                                                         <Plus className="h-3 w-3" />
                                                         Add Staff to {branch.name}
-                                                    </Link>
+                                                    </button>
                                                 </td>
                                             </tr>
                                         )}

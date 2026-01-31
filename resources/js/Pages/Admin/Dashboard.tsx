@@ -98,20 +98,20 @@ export default function Dashboard({ stats, charts, goals, branches, selectedBran
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
 
                     {/* Header */}
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div>
                             <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Dashboard Overview</h2>
                             <p className="text-gray-500 text-sm mt-1">Real-time insights and performance metrics.</p>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2 w-full md:w-auto">
                             {/* Branch Filter - Admin Only */}
                             {canFilterBranches && (
-                                <div className="flex items-center gap-2">
-                                    <Building2 className="h-4 w-4 text-gray-400" />
+                                <div className="flex items-center gap-2 flex-1 md:flex-none">
+                                    <Building2 className="h-4 w-4 text-gray-400 hidden sm:block" />
                                     <select
                                         value={selectedBranch || ''}
                                         onChange={(e) => handleBranchChange(e.target.value)}
-                                        className="bg-white border border-gray-200 text-gray-700 h-9 rounded-md text-sm font-medium shadow-sm focus:ring-0 focus:border-gray-200 cursor-pointer min-w-[160px]"
+                                        className="bg-white border border-gray-200 text-gray-700 h-9 rounded-md text-sm font-medium shadow-sm focus:ring-0 focus:border-gray-200 cursor-pointer w-full md:min-w-[160px]"
                                     >
                                         <option value="">All Branches</option>
                                         {branches.map((branch) => (
@@ -123,20 +123,20 @@ export default function Dashboard({ stats, charts, goals, branches, selectedBran
                             <select
                                 value={goals.timeframe}
                                 onChange={(e) => handleTimeframeChange(e.target.value)}
-                                className="bg-white border border-gray-200 text-gray-700 h-9 rounded-md text-sm font-medium shadow-sm focus:ring-0 focus:border-gray-200 cursor-pointer"
+                                className="bg-white border border-gray-200 text-gray-700 h-9 rounded-md text-sm font-medium shadow-sm focus:ring-0 focus:border-gray-200 cursor-pointer flex-1 md:flex-none"
                             >
                                 <option value="daily">Daily Goal</option>
                                 <option value="monthly">Monthly Goal</option>
                                 <option value="yearly">Yearly Goal</option>
                             </select>
-                            <button className="bg-gray-900 text-white px-3 py-1.5 rounded-md text-sm font-medium shadow-sm hover:bg-gray-800 transition-colors">
+                            <button className="bg-gray-900 text-white px-3 py-1.5 rounded-md text-sm font-medium shadow-sm hover:bg-gray-800 transition-colors flex-1 md:flex-none whitespace-nowrap">
                                 Export Report
                             </button>
                         </div>
                     </div>
 
                     {/* KPI Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                         <KPICard title="Total Revenue" value={'₱' + stats.revenue.toLocaleString()} icon={DollarSign} trend="+12.5%" trendUp={true} color="text-indigo-600" />
                         <KPICard title="Active Job Orders" value={stats.orders} icon={ShoppingBag} trend="+8.2%" trendUp={true} color="text-blue-600" />
                         <KPICard title="Total Inventory" value={stats.products} icon={Package} trend="-2.4%" trendUp={false} color="text-orange-600" />
@@ -263,17 +263,17 @@ export default function Dashboard({ stats, charts, goals, branches, selectedBran
 
 function KPICard({ title, value, icon: Icon, trend, trendUp, color }: any) {
     return (
-        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+        <div className="bg-white p-4 md:p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
                 <div>
-                    <p className="text-sm font-medium text-gray-500">{title}</p>
-                    <p className="text-2xl font-bold text-gray-900 mt-1">{value}</p>
+                    <p className="text-xs md:text-sm font-medium text-gray-500">{title}</p>
+                    <p className="text-lg md:text-2xl font-bold text-gray-900 mt-1 truncate">{value}</p>
                 </div>
-                <div className={`p-3 rounded-lg bg-gray-50 ${color}`}>
-                    <Icon className="h-6 w-6" />
+                <div className={`p-2 md:p-3 rounded-lg bg-gray-50 ${color}`}>
+                    <Icon className="h-5 w-5 md:h-6 md:w-6" />
                 </div>
             </div>
-            <div className="mt-4 flex items-center text-sm">
+            <div className="mt-4 flex items-center text-xs md:text-sm">
                 <span className={`font-medium ${trendUp ? 'text-green-600' : 'text-red-600'} flex items-center`}>
                     {trend}
                 </span>

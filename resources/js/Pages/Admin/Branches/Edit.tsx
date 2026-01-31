@@ -1,7 +1,8 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, Link, router } from '@inertiajs/react';
 import { FormEventHandler, useState, useEffect } from 'react';
-import { ArrowLeft, Plus, Trash2, Users, Key, MapPin, Shield, Lock, X, Check } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Users, Key, Shield, Lock, X, Check } from 'lucide-react';
+import LocationPicker from '@/Components/LocationPicker';
 import Modal from '@/Components/Modal';
 import Checkbox from '@/Components/Checkbox';
 import SecondaryButton from '@/Components/SecondaryButton';
@@ -253,37 +254,44 @@ export default function Edit({ branch, availableMenus, roles }: Props) {
 
                                     {/* Map Coordinates Section */}
                                     <div className="border border-green-200 rounded-lg p-4 bg-green-50/50">
-                                        <div className="flex items-center gap-2 mb-4">
-                                            <MapPin className="h-4 w-4 text-green-600" />
-                                            <h3 className="font-medium text-gray-900">Map Coordinates</h3>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-4">
+                                        <h3 className="font-medium text-gray-900 mb-2">Branch Location</h3>
+                                        <p className="text-xs text-gray-500 mb-4">
+                                            Search for the location or pin it on the map.
+                                        </p>
+
+                                        <LocationPicker
+                                            initialLat={branch.latitude ? parseFloat(branch.latitude.toString()) : undefined}
+                                            initialLng={branch.longitude ? parseFloat(branch.longitude.toString()) : undefined}
+                                            onLocationSelect={(lat, lng) => {
+                                                setData(data => ({
+                                                    ...data,
+                                                    latitude: lat.toString(),
+                                                    longitude: lng.toString()
+                                                }));
+                                            }}
+                                        />
+
+                                        <div className="grid grid-cols-2 gap-4 mt-4">
                                             <div>
-                                                <label htmlFor="latitude" className="block text-sm font-medium text-gray-700 mb-1">
-                                                    Latitude
+                                                <label className="block text-xs font-medium text-gray-500 mb-1">
+                                                    Selected Latitude
                                                 </label>
                                                 <input
-                                                    id="latitude"
-                                                    type="number"
-                                                    step="any"
+                                                    type="text"
+                                                    readOnly
+                                                    className="w-full bg-white/50 text-gray-600 text-sm border-gray-200 rounded-md shadow-sm"
                                                     value={data.latitude}
-                                                    onChange={(e) => setData('latitude', e.target.value)}
-                                                    className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                                    placeholder="e.g., 14.5547"
                                                 />
                                             </div>
                                             <div>
-                                                <label htmlFor="longitude" className="block text-sm font-medium text-gray-700 mb-1">
-                                                    Longitude
+                                                <label className="block text-xs font-medium text-gray-500 mb-1">
+                                                    Selected Longitude
                                                 </label>
                                                 <input
-                                                    id="longitude"
-                                                    type="number"
-                                                    step="any"
+                                                    type="text"
+                                                    readOnly
+                                                    className="w-full bg-white/50 text-gray-600 text-sm border-gray-200 rounded-md shadow-sm"
                                                     value={data.longitude}
-                                                    onChange={(e) => setData('longitude', e.target.value)}
-                                                    className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                                    placeholder="e.g., 121.0244"
                                                 />
                                             </div>
                                         </div>

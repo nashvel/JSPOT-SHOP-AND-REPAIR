@@ -9,14 +9,15 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('sale_items', function (Blueprint $table) {
-            $table->string('category_name')->nullable()->after('product_name');
+            $table->string('product_type')->default('product')->after('product_name');
+            $table->string('category_name')->nullable()->after('product_type');
         });
     }
 
     public function down(): void
     {
         Schema::table('sale_items', function (Blueprint $table) {
-            $table->dropColumn('category_name');
+            $table->dropColumn(['product_type', 'category_name']);
         });
     }
 };
