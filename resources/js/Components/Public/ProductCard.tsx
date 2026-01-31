@@ -72,8 +72,7 @@ export default function ProductCard({
 
                 <button
                     onClick={() => onViewProduct(product)}
-                    className={`w-full bg-${themeColors.primary}-900 text-white py-2 rounded-lg font-semibold text-xs hover:bg-${themeColors.primary}-800 transition-colors`}
-                    style={{ backgroundColor: themeColors.primary === 'purple' ? '#581c87' : undefined }}
+                    className="w-full bg-primary-900 text-white py-2 rounded-lg font-semibold text-xs hover:bg-primary-800 transition-colors"
                 >
                     VIEW PRODUCT
                 </button>
@@ -84,8 +83,7 @@ export default function ProductCard({
                     </span>
                     <button
                         onClick={() => onReserve(product)}
-                        className={`text-${themeColors.primary}-600 hover:text-${themeColors.primary}-800 font-semibold flex items-center gap-1`}
-                        style={{ color: themeColors.primary === 'purple' ? '#9333ea' : undefined }}
+                        className="text-primary-600 hover:text-primary-800 font-semibold flex items-center gap-1"
                     >
                         <Star className="w-3 h-3" />
                         Reserve

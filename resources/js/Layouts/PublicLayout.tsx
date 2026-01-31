@@ -1,4 +1,4 @@
-import { PropsWithChildren, useState, useMemo } from 'react';
+import { PropsWithChildren, useState, useMemo, useEffect } from 'react';
 import { Link, Head, router } from '@inertiajs/react';
 import { ShoppingBag, Search, ClipboardList, ShoppingCart, User, Phone, Mail, MapPin, X, Trash2, Home, Heart, Store, Minus, Plus } from 'lucide-react';
 import Fuse from 'fuse.js';
@@ -54,12 +54,44 @@ export default function PublicLayout({ children, branches = [], currentBranch, s
         window.dispatchEvent(event);
     };
 
+    // Color Mapping for Theme
+    const PRIMARY_COLORS: Record<string, Record<string, string>> = {
+        'purple': { 50: '#faf5ff', 100: '#f3e8ff', 200: '#e9d5ff', 300: '#d8b4fe', 400: '#c084fc', 500: '#a855f7', 600: '#9333ea', 700: '#7e22ce', 800: '#6b21a8', 900: '#581c87' },
+        'blue': { 50: '#eff6ff', 100: '#dbeafe', 200: '#bfdbfe', 300: '#93c5fd', 400: '#60a5fa', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8', 800: '#1e40af', 900: '#1e3a8a' },
+        'red': { 50: '#fef2f2', 100: '#fee2e2', 200: '#fecaca', 300: '#fca5a5', 400: '#f87171', 500: '#ef4444', 600: '#dc2626', 700: '#b91c1c', 800: '#991b1b', 900: '#7f1d1d' },
+        'green': { 50: '#f0fdf4', 100: '#dcfce7', 200: '#bbf7d0', 300: '#86efac', 400: '#4ade80', 500: '#22c55e', 600: '#16a34a', 700: '#15803d', 800: '#166534', 900: '#14532d' },
+        'indigo': { 50: '#eef2ff', 100: '#e0e7ff', 200: '#c7d2fe', 300: '#a5b4fc', 400: '#818cf8', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca', 800: '#3730a3', 900: '#312e81' },
+        'orange': { 50: '#fff7ed', 100: '#ffedd5', 200: '#fed7aa', 300: '#fdba74', 400: '#fb923c', 500: '#f97316', 600: '#ea580c', 700: '#c2410c', 800: '#9a3412', 900: '#7c2d12' },
+        'teal': { 50: '#f0fdfa', 100: '#ccfbf1', 200: '#99f6e4', 300: '#5eead4', 400: '#2dd4bf', 500: '#14b8a6', 600: '#0d9488', 700: '#0f766e', 800: '#115e59', 900: '#134e4a' },
+        'cyan': { 50: '#ecfeff', 100: '#cffafe', 200: '#a5f3fc', 300: '#67e8f9', 400: '#22d3ee', 500: '#06b6d4', 600: '#0891b2', 700: '#0e7490', 800: '#155e75', 900: '#164e63' },
+        'pink': { 50: '#fdf2f8', 100: '#fce7f3', 200: '#fbcfe8', 300: '#f9a8d4', 400: '#f472b6', 500: '#ec4899', 600: '#db2777', 700: '#be185d', 800: '#9d174d', 900: '#831843' },
+        'gray': { 50: '#f9fafb', 100: '#f3f4f6', 200: '#e5e7eb', 300: '#d1d5db', 400: '#9ca3af', 500: '#6b7280', 600: '#4b5563', 700: '#374151', 800: '#1f2937', 900: '#111827' },
+        'black': { 50: '#f9fafb', 100: '#f3f4f6', 200: '#e5e7eb', 300: '#d1d5db', 400: '#9ca3af', 500: '#000000', 600: '#000000', 700: '#000000', 800: '#000000', 900: '#000000' },
+    };
+
+    const primaryShades = PRIMARY_COLORS[themeColors.primary] || PRIMARY_COLORS['purple'];
+
+    useEffect(() => {
+        const root = document.documentElement;
+        root.style.setProperty('--primary-50', primaryShades[50]);
+        root.style.setProperty('--primary-100', primaryShades[100]);
+        root.style.setProperty('--primary-200', primaryShades[200]);
+        root.style.setProperty('--primary-300', primaryShades[300]);
+        root.style.setProperty('--primary-400', primaryShades[400]);
+        root.style.setProperty('--primary-500', primaryShades[500]);
+        root.style.setProperty('--primary-600', primaryShades[600]);
+        root.style.setProperty('--primary-700', primaryShades[700]);
+        root.style.setProperty('--primary-800', primaryShades[800]);
+        root.style.setProperty('--primary-900', primaryShades[900]);
+    }, [primaryShades]);
+
     return (
         <div className="min-h-screen bg-white">
+
             {/* Sticky Header Container */}
             <div className="sticky top-0 z-50 bg-white">
                 {/* Top Purple Contact Bar - Hidden on mobile */}
-                <div className="hidden md:block bg-gradient-to-r from-purple-900 to-purple-700 text-white text-xs py-2">
+                <div className="hidden md:block bg-gradient-to-r from-primary-900 to-primary-700 text-white text-xs py-2">
                     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                         <div className="flex justify-between items-center">
                             <div className="flex items-center gap-4">
@@ -84,9 +116,9 @@ export default function PublicLayout({ children, branches = [], currentBranch, s
                         <div className="flex items-center justify-between gap-4">
                             {/* Logo */}
                             <Link href="/" className="flex items-center gap-2 flex-shrink-0">
-                                <ShoppingBag className="h-7 w-7 md:h-8 md:w-8 text-purple-700" />
+                                <ShoppingBag className="h-7 w-7 md:h-8 md:w-8 text-primary-700" />
                                 <div className="flex flex-col leading-tight">
-                                    <span className="text-xl md:text-2xl font-black text-purple-900">JSPOT</span>
+                                    <span className="text-xl md:text-2xl font-black text-primary-900">JSPOT</span>
                                     <span className="text-[10px] md:text-xs text-gray-600 font-medium hidden sm:block">MOTORS & SERVICES</span>
                                 </div>
                             </Link>
@@ -97,7 +129,7 @@ export default function PublicLayout({ children, branches = [], currentBranch, s
                                     <input
                                         type="text"
                                         placeholder="Search parts..."
-                                        className="w-full rounded-lg border border-gray-300 pl-4 pr-12 py-2 text-sm focus:border-purple-500 focus:ring-purple-500"
+                                        className="w-full rounded-lg border border-gray-300 pl-4 pr-12 py-2 text-sm focus:border-primary-500 focus:ring-primary-500"
                                         value={search}
                                         onChange={handleSearchInput}
                                         onBlur={() => setTimeout(() => setSuggestions([]), 200)}
@@ -105,7 +137,7 @@ export default function PublicLayout({ children, branches = [], currentBranch, s
                                     />
                                     <button
                                         onClick={handleSearch}
-                                        className="absolute right-2 top-1/2 -translate-y-1/2 bg-purple-700 hover:bg-purple-800 text-white p-1.5 rounded"
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 bg-primary-700 hover:bg-primary-800 text-white p-1.5 rounded"
                                     >
                                         <Search className="h-4 w-4" />
                                     </button>
@@ -125,11 +157,11 @@ export default function PublicLayout({ children, branches = [], currentBranch, s
                                                     }}
                                                 >
                                                     <div className="font-bold text-gray-900">{item.name}</div>
-                                                    <div className="text-xs text-purple-600 flex flex-wrap gap-1 mt-1">
+                                                    <div className="text-xs text-primary-600 flex flex-wrap gap-1 mt-1">
                                                         <span className="font-medium text-gray-500">Available in:</span>
                                                         {item.branches && item.branches.length > 0 ? (
                                                             item.branches.map((b: any) => (
-                                                                <span key={b.id} className="bg-purple-50 px-1.5 py-0.5 rounded text-purple-700">
+                                                                <span key={b.id} className="bg-primary-50 px-1.5 py-0.5 rounded text-primary-700">
                                                                     {b.name}
                                                                 </span>
                                                             ))
@@ -147,7 +179,7 @@ export default function PublicLayout({ children, branches = [], currentBranch, s
                             {/* Right Icons */}
                             <div className="flex items-center gap-2 sm:gap-4">
                                 {/* Mobile Search Button */}
-                                <button className="sm:hidden p-2 text-gray-600 hover:text-purple-700">
+                                <button className="sm:hidden p-2 text-gray-600 hover:text-primary-700">
                                     <Search className="h-5 w-5" />
                                 </button>
 
@@ -158,7 +190,7 @@ export default function PublicLayout({ children, branches = [], currentBranch, s
                                         <select
                                             value={currentBranch || ''}
                                             onChange={handleBranchChange}
-                                            className="rounded-lg border border-gray-300 pl-9 pr-4 py-2 text-sm focus:border-purple-500 focus:ring-purple-500"
+                                            className="rounded-lg border border-gray-300 pl-9 pr-4 py-2 text-sm focus:border-primary-500 focus:ring-primary-500"
                                         >
                                             <option value="">All Branches</option>
                                             {branches.map((b: any) => (
@@ -168,7 +200,7 @@ export default function PublicLayout({ children, branches = [], currentBranch, s
                                     </div>
                                 )}
 
-                                <Link href="/login" className="hidden sm:flex items-center gap-1 text-gray-600 hover:text-purple-700">
+                                <Link href="/login" className="hidden sm:flex items-center gap-1 text-gray-600 hover:text-primary-700">
                                     <User className="h-5 w-5" />
                                 </Link>
 
@@ -176,11 +208,11 @@ export default function PublicLayout({ children, branches = [], currentBranch, s
                                 <div className="relative hidden md:block">
                                     <button
                                         onClick={() => setIsCartOpen(!isCartOpen)}
-                                        className="relative flex items-center gap-1 text-gray-600 hover:text-purple-700"
+                                        className="relative flex items-center gap-1 text-gray-600 hover:text-primary-700"
                                     >
                                         <ShoppingCart className="h-6 w-6" />
                                         {getCount() > 0 && (
-                                            <span className="absolute -top-2 -right-2 bg-purple-600 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                                            <span className="absolute -top-2 -right-2 bg-primary-600 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
                                                 {getCount()}
                                             </span>
                                         )}
@@ -195,13 +227,13 @@ export default function PublicLayout({ children, branches = [], currentBranch, s
                 <nav className="hidden md:block bg-gray-50 border-b border-gray-200">
                     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                         <div className="flex items-center justify-center gap-8 py-3">
-                            <Link href="/" className="text-sm font-medium text-gray-700 hover:text-purple-700">
+                            <Link href="/" className="text-sm font-medium text-gray-700 hover:text-primary-700">
                                 Home
                             </Link>
 
                             {/* TODO: Make these dropdowns dynamic from categories - Engine Parts Dropdown */}
                             <div className="relative group">
-                                <button className="flex items-center gap-1 text-sm font-medium text-gray-700 hover:text-purple-700">
+                                <button className="flex items-center gap-1 text-sm font-medium text-gray-700 hover:text-primary-700">
                                     Engine Parts
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -209,35 +241,35 @@ export default function PublicLayout({ children, branches = [], currentBranch, s
                                 </button>
                                 <div className="absolute left-0 top-full mt-0 w-56 bg-white shadow-lg border border-gray-200 rounded-b-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                                     <div className="py-2">
-                                        <Link href="/" className="block px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700">
+                                        <Link href="/" className="block px-4 py-2 text-sm text-gray-700 hover:bg-primary-50 hover:text-primary-700">
                                             Pistons
                                         </Link>
-                                        <Link href="/" className="block px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700">
+                                        <Link href="/" className="block px-4 py-2 text-sm text-gray-700 hover:bg-primary-50 hover:text-primary-700">
                                             Cylinders
                                         </Link>
-                                        <Link href="/" className="block px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700">
+                                        <Link href="/" className="block px-4 py-2 text-sm text-gray-700 hover:bg-primary-50 hover:text-primary-700">
                                             Crankshafts
                                         </Link>
-                                        <Link href="/" className="block px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700">
+                                        <Link href="/" className="block px-4 py-2 text-sm text-gray-700 hover:bg-primary-50 hover:text-primary-700">
                                             Camshafts
                                         </Link>
-                                        <Link href="/" className="block px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700">
+                                        <Link href="/" className="block px-4 py-2 text-sm text-gray-700 hover:bg-primary-50 hover:text-primary-700">
                                             Valves
                                         </Link>
-                                        <Link href="/" className="block px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700">
+                                        <Link href="/" className="block px-4 py-2 text-sm text-gray-700 hover:bg-primary-50 hover:text-primary-700">
                                             Gaskets
                                         </Link>
                                     </div>
                                 </div>
                             </div>
 
-                            <Link href="/" className="text-sm font-medium text-gray-700 hover:text-purple-700">
+                            <Link href="/" className="text-sm font-medium text-gray-700 hover:text-primary-700">
                                 Brake Systems
                             </Link>
 
                             {/* TODO: Make these dropdowns dynamic from categories - Accessories Dropdown */}
                             <div className="relative group">
-                                <button className="flex items-center gap-1 text-sm font-medium text-gray-700 hover:text-purple-700">
+                                <button className="flex items-center gap-1 text-sm font-medium text-gray-700 hover:text-primary-700">
                                     Accessories
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -245,22 +277,22 @@ export default function PublicLayout({ children, branches = [], currentBranch, s
                                 </button>
                                 <div className="absolute left-0 top-full mt-0 w-56 bg-white shadow-lg border border-gray-200 rounded-b-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                                     <div className="py-2">
-                                        <Link href="/" className="block px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700">
+                                        <Link href="/" className="block px-4 py-2 text-sm text-gray-700 hover:bg-primary-50 hover:text-primary-700">
                                             Floor Mats
                                         </Link>
-                                        <Link href="/" className="block px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700">
+                                        <Link href="/" className="block px-4 py-2 text-sm text-gray-700 hover:bg-primary-50 hover:text-primary-700">
                                             Seat Covers
                                         </Link>
-                                        <Link href="/" className="block px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700">
+                                        <Link href="/" className="block px-4 py-2 text-sm text-gray-700 hover:bg-primary-50 hover:text-primary-700">
                                             Steering Wheel Covers
                                         </Link>
-                                        <Link href="/" className="block px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700">
+                                        <Link href="/" className="block px-4 py-2 text-sm text-gray-700 hover:bg-primary-50 hover:text-primary-700">
                                             Air Fresheners
                                         </Link>
-                                        <Link href="/" className="block px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700">
+                                        <Link href="/" className="block px-4 py-2 text-sm text-gray-700 hover:bg-primary-50 hover:text-primary-700">
                                             Phone Holders
                                         </Link>
-                                        <Link href="/" className="block px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700">
+                                        <Link href="/" className="block px-4 py-2 text-sm text-gray-700 hover:bg-primary-50 hover:text-primary-700">
                                             Dash Cams
                                         </Link>
                                     </div>
@@ -269,7 +301,7 @@ export default function PublicLayout({ children, branches = [], currentBranch, s
 
                             {/* TODO: Make these dropdowns dynamic from categories - Oils & Lubricants Dropdown */}
                             <div className="relative group">
-                                <button className="flex items-center gap-1 text-sm font-medium text-gray-700 hover:text-purple-700">
+                                <button className="flex items-center gap-1 text-sm font-medium text-gray-700 hover:text-primary-700">
                                     Oils & Lubricants
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -277,32 +309,32 @@ export default function PublicLayout({ children, branches = [], currentBranch, s
                                 </button>
                                 <div className="absolute left-0 top-full mt-0 w-56 bg-white shadow-lg border border-gray-200 rounded-b-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                                     <div className="py-2">
-                                        <Link href="/" className="block px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700">
+                                        <Link href="/" className="block px-4 py-2 text-sm text-gray-700 hover:bg-primary-50 hover:text-primary-700">
                                             Engine Oil
                                         </Link>
-                                        <Link href="/" className="block px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700">
+                                        <Link href="/" className="block px-4 py-2 text-sm text-gray-700 hover:bg-primary-50 hover:text-primary-700">
                                             Transmission Fluid
                                         </Link>
-                                        <Link href="/" className="block px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700">
+                                        <Link href="/" className="block px-4 py-2 text-sm text-gray-700 hover:bg-primary-50 hover:text-primary-700">
                                             Brake Fluid
                                         </Link>
-                                        <Link href="/" className="block px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700">
+                                        <Link href="/" className="block px-4 py-2 text-sm text-gray-700 hover:bg-primary-50 hover:text-primary-700">
                                             Coolant
                                         </Link>
-                                        <Link href="/" className="block px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700">
+                                        <Link href="/" className="block px-4 py-2 text-sm text-gray-700 hover:bg-primary-50 hover:text-primary-700">
                                             Grease
                                         </Link>
-                                        <Link href="/" className="block px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700">
+                                        <Link href="/" className="block px-4 py-2 text-sm text-gray-700 hover:bg-primary-50 hover:text-primary-700">
                                             Chain Lube
                                         </Link>
                                     </div>
                                 </div>
                             </div>
-                            <Link href="/track" className="flex items-center gap-1 text-sm font-medium text-gray-700 hover:text-purple-700">
+                            <Link href="/track" className="flex items-center gap-1 text-sm font-medium text-gray-700 hover:text-primary-700">
                                 <ClipboardList className="h-4 w-4" />
                                 Service Tracker
                             </Link>
-                            <Link href="/" className="relative text-sm font-medium text-gray-700 hover:text-purple-700">
+                            <Link href="/" className="relative text-sm font-medium text-gray-700 hover:text-primary-700">
                                 Promotions
                                 <span className="absolute -top-2 -right-8 bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded">HOT</span>
                             </Link>
@@ -326,18 +358,18 @@ export default function PublicLayout({ children, branches = [], currentBranch, s
             {/* Mobile Bottom Navigation */}
             <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">
                 <div className="flex items-center justify-around py-2">
-                    <Link href="/" className="flex flex-col items-center gap-1 text-gray-600 hover:text-purple-700">
+                    <Link href="/" className="flex flex-col items-center gap-1 text-gray-600 hover:text-primary-700">
                         <Home className="w-5 h-5" />
                         <span className="text-[10px] font-medium">Home</span>
                     </Link>
                     <button
                         onClick={() => setIsBranchModalOpen(true)}
-                        className="flex flex-col items-center gap-1 text-gray-600 hover:text-purple-700"
+                        className="flex flex-col items-center gap-1 text-gray-600 hover:text-primary-700"
                     >
                         <Store className="w-5 h-5" />
                         <span className="text-[10px] font-medium">Branches</span>
                     </button>
-                    <Link href="/wishlist" className="flex flex-col items-center gap-1 text-gray-600 hover:text-purple-700 relative">
+                    <Link href="/wishlist" className="flex flex-col items-center gap-1 text-gray-600 hover:text-primary-700 relative">
                         <Heart className="w-5 h-5" />
                         {getWishlistCount() > 0 && (
                             <span className="absolute -top-1 right-2 bg-pink-500 text-white text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center">
@@ -348,11 +380,11 @@ export default function PublicLayout({ children, branches = [], currentBranch, s
                     </Link>
                     <button
                         onClick={() => setIsCartOpen(true)}
-                        className="flex flex-col items-center gap-1 text-gray-600 hover:text-purple-700 relative"
+                        className="flex flex-col items-center gap-1 text-gray-600 hover:text-primary-700 relative"
                     >
                         <ShoppingCart className="w-5 h-5" />
                         {getCount() > 0 && (
-                            <span className="absolute -top-1 right-2 bg-purple-600 text-white text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center">
+                            <span className="absolute -top-1 right-2 bg-primary-600 text-white text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center">
                                 {getCount()}
                             </span>
                         )}
@@ -407,7 +439,7 @@ export default function PublicLayout({ children, branches = [], currentBranch, s
                                             <div className="flex-1 min-w-0">
                                                 <h3 className="font-semibold text-gray-900 text-sm truncate">{item.name}</h3>
                                                 <p className="text-xs text-gray-500">{item.branchName || 'Multiple Branches'}</p>
-                                                <p className="text-purple-700 font-bold text-sm mt-1">₱{item.price.toLocaleString()}</p>
+                                                <p className="text-primary-700 font-bold text-sm mt-1">₱{item.price.toLocaleString()}</p>
                                             </div>
                                             <div className="flex flex-col items-end justify-between">
                                                 <button
@@ -443,11 +475,11 @@ export default function PublicLayout({ children, branches = [], currentBranch, s
                             <div className="p-4 border-t border-gray-200">
                                 <div className="flex justify-between mb-4">
                                     <span className="text-gray-600">Total</span>
-                                    <span className="text-lg font-bold text-purple-900">₱{getTotal().toLocaleString()}</span>
+                                    <span className="text-lg font-bold text-primary-900">₱{getTotal().toLocaleString()}</span>
                                 </div>
                                 <Link
                                     href="/cart"
-                                    className="block w-full py-3 bg-purple-700 text-white rounded-lg font-bold text-center hover:bg-purple-800 transition-colors mb-2"
+                                    className="block w-full py-3 bg-primary-700 text-white rounded-lg font-bold text-center hover:bg-primary-800 transition-colors mb-2"
                                     onClick={() => setIsCartOpen(false)}
                                 >
                                     View Cart
@@ -487,7 +519,7 @@ export default function PublicLayout({ children, branches = [], currentBranch, s
                                     router.get('/', { branch: '' }, { preserveState: true, preserveScroll: true });
                                     setIsBranchModalOpen(false);
                                 }}
-                                className={`w-full text-left p-3 rounded-lg border transition-colors ${!currentBranch ? 'border-purple-500 bg-purple-50 text-purple-700' : 'border-gray-200 hover:bg-gray-50'}`}
+                                className={`w-full text-left p-3 rounded-lg border transition-colors ${!currentBranch ? 'border-primary-500 bg-primary-50 text-primary-700' : 'border-gray-200 hover:bg-gray-50'}`}
                             >
                                 <span className="font-medium">All Branches</span>
                             </button>
@@ -498,7 +530,7 @@ export default function PublicLayout({ children, branches = [], currentBranch, s
                                         router.get('/', { branch: branch.name }, { preserveState: true, preserveScroll: true });
                                         setIsBranchModalOpen(false);
                                     }}
-                                    className={`w-full text-left p-3 rounded-lg border transition-colors ${currentBranch === branch.name ? 'border-purple-500 bg-purple-50 text-purple-700' : 'border-gray-200 hover:bg-gray-50'}`}
+                                    className={`w-full text-left p-3 rounded-lg border transition-colors ${currentBranch === branch.name ? 'border-primary-500 bg-primary-50 text-primary-700' : 'border-gray-200 hover:bg-gray-50'}`}
                                 >
                                     <span className="font-medium">{branch.name}</span>
                                     {branch.contact_number && (

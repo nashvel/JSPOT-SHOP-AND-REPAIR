@@ -43,7 +43,7 @@ export default function QuickViewModal({
                         <X className="w-5 h-5" />
                     </button>
 
-                    <span className="text-[10px] font-semibold text-purple-600 uppercase tracking-wide mb-1">
+                    <span className="text-[10px] font-semibold text-primary-600 uppercase tracking-wide mb-1">
                         {currentBranch || 'Multiple Branches'}
                     </span>
 
@@ -81,7 +81,7 @@ export default function QuickViewModal({
                             disabled={addedToCart}
                             className={`flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded font-semibold text-white text-xs transition-all whitespace-nowrap ${addedToCart
                                 ? 'bg-green-500'
-                                : 'bg-purple-700 hover:bg-purple-800'
+                                : 'bg-primary-700 hover:bg-primary-800'
                                 }`}
                         >
                             {addedToCart ? (
@@ -92,7 +92,7 @@ export default function QuickViewModal({
                         </button>
                         <button
                             onClick={onReserve}
-                            className="flex-1 py-2 px-3 border border-purple-700 text-purple-700 rounded font-semibold text-xs hover:bg-purple-50 transition-colors whitespace-nowrap"
+                            className="flex-1 py-2 px-3 border border-primary-700 text-primary-700 rounded font-semibold text-xs hover:bg-primary-50 transition-colors whitespace-nowrap"
                         >
                             Reserve
                         </button>
