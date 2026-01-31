@@ -50,6 +50,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('admin/sales', [\App\Http\Controllers\Admin\SaleController::class, 'index'])->name('admin.sales.index');
     Route::post('admin/sales', [\App\Http\Controllers\Admin\SaleController::class, 'store'])->name('admin.sales.store');
     Route::get('admin/sales/{sale}', [\App\Http\Controllers\Admin\SaleController::class, 'show'])->name('admin.sales.show');
+    Route::post('admin/sales/{sale}/add-items', [\App\Http\Controllers\Admin\SaleController::class, 'addItems'])->name('admin.sales.add-items');
 
     // Returns Management
     Route::get('admin/returns', [\App\Http\Controllers\Admin\ReturnController::class, 'index'])->name('admin.returns.index');

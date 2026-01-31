@@ -1,8 +1,15 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, QrCode, RotateCcw, Banknote, Smartphone, CreditCard, Copy, CheckCircle } from 'lucide-react';
+import { ArrowLeft, QrCode, RotateCcw, Banknote, Smartphone, CreditCard, Copy, CheckCircle, Plus, ChevronDown, ChevronUp } from 'lucide-react';
 import { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
+import MiniPosModal from './Components/MiniPosModal';
+
+interface Transaction {
+    reference_number: string | null;
+    quantity: number;
+    amount: number;
+}
 
 interface SaleItem {
     id: number;
@@ -13,6 +20,9 @@ interface SaleItem {
     quantity: number;
     unit_price: number;
     total: number;
+    payment_method: string | null;
+    reference_number: string | null;
+    transactions: Transaction[] | null;
 }
 
 interface SaleReturn {
@@ -43,6 +53,7 @@ interface Sale {
     created_at: string;
     user: { name: string };
     branch: { name: string };
+    branch_id: number;
     items: SaleItem[];
     returns: SaleReturn[];
 }
@@ -50,12 +61,21 @@ interface Sale {
 interface Props {
     sale: Sale;
     receiptUrl: string;
+    posData?: {
+        products: any[];
+        services: any[];
+        categories: any[];
+        mechanics: any[];
+    };
 }
 
-export default function Show({ sale, receiptUrl }: Props) {
+export default function Show({ sale, receiptUrl, posData }: Props) {
     const [showReturnModal, setShowReturnModal] = useState(false);
+    const [showPosModal, setShowPosModal] = useState(false);
     const [selectedItem, setSelectedItem] = useState<SaleItem | null>(null);
     const [copied, setCopied] = useState(false);
+    const [showTransactions, setShowTransactions] = useState(false);
+    const [expandedPayments, setExpandedPayments] = useState<number[]>([]);
 
     const { data, setData, post, processing, reset, errors } = useForm({
         sale_id: sale.id,
@@ -122,6 +142,15 @@ export default function Show({ sale, receiptUrl }: Props) {
                             </div>
                         </div>
                         <div className="flex gap-2">
+                            {posData && (
+                                <button
+                                    onClick={() => setShowPosModal(true)}
+                                    className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
+                                >
+                                    <Plus className="h-4 w-4" />
+                                    Add Items
+                                </button>
+                            )}
                             <button
                                 onClick={copyReceiptUrl}
                                 className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium"
@@ -178,33 +207,95 @@ export default function Show({ sale, receiptUrl }: Props) {
                                 <table className="min-w-full">
                                     <thead className="bg-gray-50">
                                         <tr>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
-                                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Qty</th>
-                                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Price</th>
-                                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total</th>
+                                            <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Product</th>
+                                            <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Type</th>
+                                            <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Category</th>
+                                            <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Payment</th>
+                                            <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Qty</th>
+                                            <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Price</th>
+                                            <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Total</th>
                                             <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Action</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-gray-200">
+                                    <tbody className="bg-white divide-y divide-gray-200">
                                         {sale.items.map(item => {
                                             const returnedQty = getReturnedQty(item.id);
                                             const availableQty = item.quantity - returnedQty;
                                             const canReturn = item.product_type === 'product' && availableQty > 0;
 
                                             return (
-                                                <tr key={item.id}>
-                                                    <td className="px-4 py-3 font-medium">{item.product_name}</td>
-                                                    <td className="px-4 py-3">
-                                                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${item.product_type === 'product' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
+                                                <tr key={item.id} className="hover:bg-gray-50 transition-colors">
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <div className="flex flex-col">
+                                                            <span className="text-sm font-bold text-gray-900">{item.product_name}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${item.product_type === 'product' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}`}>
                                                             {item.product_type === 'product' ? 'Product' : 'Service'}
                                                         </span>
                                                     </td>
-                                                    <td className="px-4 py-3 text-sm text-gray-600">
+                                                    <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">
                                                         {item.category_name || '-'}
                                                     </td>
-                                                    <td className="px-4 py-3 text-center">
+                                                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                        {(item.payment_method === 'gcash' || item.payment_method === 'maya') ? (
+                                                            <div className="inline-flex flex-col items-center">
+                                                                <button
+                                                                    onClick={() => setExpandedPayments(prev =>
+                                                                        prev.includes(item.id)
+                                                                            ? prev.filter(id => id !== item.id)
+                                                                            : [...prev, item.id]
+                                                                    )}
+                                                                    className="flex items-center gap-1 px-2 py-1 text-xs font-bold rounded bg-gray-100 text-gray-600 uppercase hover:bg-gray-200 transition-colors"
+                                                                >
+                                                                    {item.payment_method}
+                                                                    {expandedPayments.includes(item.id) ? (
+                                                                        <ChevronUp className="h-3 w-3" />
+                                                                    ) : (
+                                                                        <ChevronDown className="h-3 w-3" />
+                                                                    )}
+                                                                </button>
+                                                                {expandedPayments.includes(item.id) && (
+                                                                    <div className="mt-1 p-2 bg-gray-50 rounded border border-gray-200 text-left text-[10px] w-52">
+                                                                        <div className="font-semibold text-gray-700 border-b pb-1 mb-2">
+                                                                            Transactions ({item.transactions?.length || 1})
+                                                                        </div>
+                                                                        <div className="space-y-2 max-h-32 overflow-y-auto">
+                                                                            {item.transactions && item.transactions.length > 0 ? (
+                                                                                item.transactions.map((tx, idx) => (
+                                                                                    <div key={idx} className="bg-white p-1.5 rounded border border-gray-100">
+                                                                                        <div className="flex justify-between items-center">
+                                                                                            <span className="text-gray-500">×{tx.quantity}</span>
+                                                                                            <span className="font-bold text-indigo-600">{formatPrice(tx.amount)}</span>
+                                                                                        </div>
+                                                                                        <div className="text-[9px] text-gray-400 font-mono truncate">
+                                                                                            Ref: {tx.reference_number || 'N/A'}
+                                                                                        </div>
+                                                                                    </div>
+                                                                                ))
+                                                                            ) : (
+                                                                                <div className="bg-white p-1.5 rounded border border-gray-100">
+                                                                                    <div className="flex justify-between items-center">
+                                                                                        <span className="text-gray-500">×{item.quantity}</span>
+                                                                                        <span className="font-bold text-indigo-600">{formatPrice(item.total)}</span>
+                                                                                    </div>
+                                                                                    <div className="text-[9px] text-gray-400 font-mono truncate">
+                                                                                        Ref: {item.reference_number || 'N/A'}
+                                                                                    </div>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        ) : (
+                                                            <span className="px-2 py-1 text-xs font-bold rounded bg-gray-100 text-gray-600 uppercase">
+                                                                {item.payment_method || '-'}
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-center">
                                                         {item.quantity}
                                                         {returnedQty > 0 && (
                                                             <span className="text-red-500 text-xs block">-{returnedQty} returned</span>
@@ -282,6 +373,72 @@ export default function Show({ sale, receiptUrl }: Props) {
                                     )}
                                 </div>
                             </div>
+
+                            {/* Payment Transactions - Expandable */}
+                            {sale.items.some(i => i.payment_method === 'gcash' || i.payment_method === 'maya') && (
+                                <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+                                    <button
+                                        onClick={() => setShowTransactions(!showTransactions)}
+                                        className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+                                    >
+                                        <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                                            <Smartphone className="h-4 w-4 text-indigo-500" />
+                                            Payment Transactions
+                                        </h3>
+                                        {showTransactions ? (
+                                            <ChevronUp className="h-5 w-5 text-gray-400" />
+                                        ) : (
+                                            <ChevronDown className="h-5 w-5 text-gray-400" />
+                                        )}
+                                    </button>
+
+                                    {showTransactions && (
+                                        <div className="border-t border-gray-100 p-4 space-y-3 bg-gray-50/50">
+                                            {/* Group items by payment_method + reference_number */}
+                                            {Object.entries(
+                                                sale.items
+                                                    .filter(i => i.payment_method === 'gcash' || i.payment_method === 'maya')
+                                                    .reduce((acc: { [key: string]: SaleItem[] }, item) => {
+                                                        const key = `${item.payment_method}-${item.reference_number || 'no-ref'}`;
+                                                        if (!acc[key]) acc[key] = [];
+                                                        acc[key].push(item);
+                                                        return acc;
+                                                    }, {})
+                                            ).map(([key, items]) => {
+                                                const [method, ...refParts] = key.split('-');
+                                                const refNumber = refParts.join('-') === 'no-ref' ? null : refParts.join('-');
+                                                const totalAmount = items.reduce((sum, i) => sum + Number(i.total), 0);
+
+                                                return (
+                                                    <div key={key} className="bg-white rounded-lg p-3 border border-gray-200">
+                                                        <div className="flex items-center justify-between mb-2">
+                                                            <span className={`px-2 py-0.5 text-xs font-bold rounded uppercase ${method === 'gcash' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
+                                                                {method}
+                                                            </span>
+                                                            <span className="text-sm font-bold text-gray-900">
+                                                                {formatPrice(totalAmount)}
+                                                            </span>
+                                                        </div>
+                                                        {refNumber && (
+                                                            <p className="text-xs text-gray-500 font-mono mb-2">
+                                                                Ref: {refNumber}
+                                                            </p>
+                                                        )}
+                                                        <div className="space-y-1">
+                                                            {items.map(item => (
+                                                                <div key={item.id} className="flex justify-between text-xs text-gray-600">
+                                                                    <span className="truncate max-w-[150px]">{item.product_name}</span>
+                                                                    <span>{formatPrice(item.total)}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
 
                             {/* QR Code */}
                             <div className="bg-white rounded-xl shadow-sm p-6">
@@ -399,6 +556,20 @@ export default function Show({ sale, receiptUrl }: Props) {
                         </form>
                     </div>
                 </div>
+            )}
+
+            {/* Mini POS Modal */}
+            {showPosModal && posData && (
+                <MiniPosModal
+                    isOpen={showPosModal}
+                    onClose={() => setShowPosModal(false)}
+                    saleId={sale.id}
+                    currentPaymentMethod={sale.payment_method}
+                    products={posData.products}
+                    services={posData.services}
+                    categories={posData.categories}
+                    mechanics={posData.mechanics}
+                />
             )}
         </AuthenticatedLayout>
     );

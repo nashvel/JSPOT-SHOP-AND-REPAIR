@@ -19,12 +19,16 @@ class SaleItem extends Model
         'quantity',
         'unit_price',
         'total',
+        'payment_method',
+        'reference_number',
+        'transactions',
     ];
 
     protected $casts = [
         'quantity' => 'integer',
         'unit_price' => 'decimal:2',
         'total' => 'decimal:2',
+        'transactions' => 'array',
     ];
 
     public function sale(): BelongsTo

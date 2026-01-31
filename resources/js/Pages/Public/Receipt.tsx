@@ -11,6 +11,8 @@ interface SaleItem {
     quantity: number;
     unit_price: number;
     total: number;
+    payment_method: string | null;
+    reference_number: string | null;
 }
 
 interface JobOrderPart {
@@ -355,9 +357,21 @@ export default function Receipt({ sale, jobOrder }: Props) {
                                                             {item.product_type === 'product' ? 'P' : 'S'}
                                                         </span>
                                                     </div>
-                                                    <p className="text-[10px] text-gray-500">
-                                                        {item.quantity} × {formatPrice(item.unit_price)}
-                                                    </p>
+                                                    <div className="flex items-center gap-2 mt-0.5">
+                                                        <p className="text-[10px] text-gray-500">
+                                                            {item.quantity} × {formatPrice(item.unit_price)}
+                                                        </p>
+                                                        {item.payment_method && (
+                                                            <span className="text-[8px] uppercase font-bold text-gray-500 bg-gray-100 px-1 rounded">
+                                                                {item.payment_method}
+                                                            </span>
+                                                        )}
+                                                        {item.reference_number && (
+                                                            <span className="text-[8px] text-gray-400 font-mono">
+                                                                #{item.reference_number}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
                                             <span className="font-medium">{formatPrice(item.total)}</span>

@@ -230,6 +230,8 @@ class SaleController extends Controller
 
             // Create sale items
             foreach ($itemsData as $itemData) {
+                // Add payment method to item data
+                $itemData['payment_method'] = $validated['payment_method'];
                 $sale->items()->create($itemData);
             }
 
@@ -291,13 +293,241 @@ class SaleController extends Controller
         });
     }
 
+    public function addItems(Request $request, Sale $sale)
+    {
+        $validated = $request->validate([
+            'items' => 'required|array|min:1',
+            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.quantity' => 'required|integer|min:1',
+            'mechanic_id' => 'nullable|exists:mechanics,id',
+            'payment_method' => 'required|in:cash,gcash,maya',
+            'amount_paid' => 'required|numeric|min:0',
+            'reference_number' => 'nullable|string|max:100',
+        ]);
+
+        return DB::transaction(function () use ($validated, $sale) {
+            $subtotalToAdd = 0;
+            $itemsData = [];
+            $hasServices = false;
+            $serviceItems = [];
+            $productItems = [];
+            $branchId = $sale->branch_id;
+
+            foreach ($validated['items'] as $item) {
+                $product = Product::findOrFail($item['product_id']);
+
+                if ($product->type === 'service') {
+                    $hasServices = true;
+                    $serviceItems[] = [
+                        'product' => $product,
+                        'quantity' => $item['quantity'],
+                    ];
+                }
+
+                // Check stock for products
+                if ($product->type === 'product') {
+                    $branchProduct = $product->branches()
+                        ->where('branch_id', $branchId)
+                        ->first();
+
+                    if (!$branchProduct || $branchProduct->pivot->stock_quantity < $item['quantity']) {
+                        throw new \Exception("Insufficient stock for {$product->name}");
+                    }
+
+                    $productItems[] = [
+                        'product' => $product,
+                        'quantity' => $item['quantity'],
+                    ];
+                }
+
+                $itemTotal = $product->price * $item['quantity'];
+                $subtotalToAdd += $itemTotal;
+
+                $itemsData[] = [
+                    'product_id' => $product->id,
+                    'product_name' => $product->name,
+                    'product_type' => $product->type,
+                    'category_name' => $product->category ? $product->category->name : null,
+                    'quantity' => $item['quantity'],
+                    'unit_price' => $product->price,
+                    'total' => $itemTotal,
+                    'payment_method' => $validated['payment_method'],
+                    'reference_number' => $validated['reference_number'] ?? null,
+                ];
+
+                // Deduct stock
+                if ($product->type === 'product') {
+                    $product->branches()->updateExistingPivot($branchId, [
+                        'stock_quantity' => DB::raw("stock_quantity - {$item['quantity']}"),
+                    ]);
+                }
+            }
+
+            // Create or Update Sale Items
+            // Merge if same product and payment method, but track each transaction separately
+            foreach ($itemsData as $itemData) {
+                $existingItem = $sale->items()
+                    ->where('product_id', $itemData['product_id'])
+                    ->where('payment_method', $itemData['payment_method'])
+                    ->first();
+
+                // Create transaction record
+                $newTransaction = [
+                    'reference_number' => $itemData['reference_number'],
+                    'quantity' => $itemData['quantity'],
+                    'amount' => $itemData['total'],
+                ];
+
+                if ($existingItem) {
+                    // Append transaction to existing item
+                    $transactions = $existingItem->transactions ?? [];
+                    $transactions[] = $newTransaction;
+
+                    $existingItem->update([
+                        'quantity' => $existingItem->quantity + $itemData['quantity'],
+                        'total' => $existingItem->total + $itemData['total'],
+                        'transactions' => $transactions,
+                    ]);
+                } else {
+                    // Create new item with transaction
+                    $itemData['transactions'] = [$newTransaction];
+                    $sale->items()->create($itemData);
+                }
+            }
+
+            // Update Sale Totals
+            $sale->refresh();
+            $newTotal = $sale->total + $subtotalToAdd; // Assuming subtotal == total (no tax)
+            $newSubtotal = $sale->subtotal + $subtotalToAdd;
+            $newAmountPaid = $sale->amount_paid + $validated['amount_paid'];
+
+            // Recalculate change based on NEW total vs NEW amount paid
+            // Note: If previous change was given, this calculation effectively "resets" the transaction balance logic
+            // Ideally: Change = (Total Paid So Far) - (Total Cost)
+            $newChange = max(0, $newAmountPaid - $newTotal);
+
+            $sale->update([
+                'subtotal' => $newSubtotal,
+                'total' => $newTotal,
+                'payment_method' => $validated['payment_method'], // Update payment method
+                'amount_paid' => $newAmountPaid,
+                'change' => $newChange,
+                // We keep the original payment method or should we update it? 
+                // Usually mixed payments are complex. Let's assume the latest payment method is noted or just keep original.
+                // But the user paid now. Let's not overwrite the MAIN payment method field as it represents the sale.
+                // Ideally we'd have a 'SalePayments' table. checking schema... sale has 'payment_method'. 
+                // Let's leave 'payment_method' as is or update it if it was unpaid? 
+                // Users requested "update the sales record".
+            ]);
+
+            // Handle Job Order
+            if ($hasServices || !empty($productItems)) {
+                // Check if JO exists
+                $jobOrder = \App\Models\JobOrder::where('sale_id', $sale->id)->first();
+
+                if ($jobOrder) {
+                    // Update existing JO
+                    $laborCostToAdd = collect($serviceItems)->sum(fn($i) => $i['product']->price * $i['quantity']);
+                    $partsCostToAdd = collect($productItems)->sum(fn($i) => $i['product']->price * $i['quantity']);
+
+                    $jobOrder->update([
+                        'labor_cost' => $jobOrder->labor_cost + $laborCostToAdd,
+                        'parts_cost' => $jobOrder->parts_cost + $partsCostToAdd,
+                        'total_cost' => $jobOrder->total_cost + $laborCostToAdd + $partsCostToAdd,
+                        // Update description to append new services
+                        'description' => $jobOrder->description . (count($serviceItems) > 0 ? ", Added: " . collect($serviceItems)->map(fn($i) => "{$i['product']->name} (x{$i['quantity']})")->join(', ') : ""),
+                    ]);
+                } elseif ($hasServices) {
+                    // Create new JO if one didn't exist but now we added services
+                    $serviceDescription = collect($serviceItems)->map(fn($i) => "{$i['product']->name} (x{$i['quantity']})")->join(', ');
+
+                    $laborCost = collect($serviceItems)->sum(fn($i) => $i['product']->price * $i['quantity']);
+                    $partsCost = collect($productItems)->sum(fn($i) => $i['product']->price * $i['quantity']);
+
+                    $jobOrder = \App\Models\JobOrder::create([
+                        'tracking_code' => \App\Models\JobOrder::generateTrackingCode(),
+                        'branch_id' => $branchId,
+                        'sale_id' => $sale->id,
+                        'mechanic_id' => $validated['mechanic_id'], // Required if creating new JO
+                        'customer_name' => $sale->customer_name,
+                        'contact_number' => $sale->contact_number,
+                        'vehicle_details' => "Plate: {$sale->plate_number}",
+                        'engine_number' => $sale->engine_number,
+                        'chassis_number' => $sale->chassis_number,
+                        'plate_number' => $sale->plate_number,
+                        'description' => "Added Services: {$serviceDescription}",
+                        'labor_cost' => $laborCost,
+                        'parts_cost' => $partsCost,
+                        'total_cost' => $laborCost + $partsCost,
+                        'status' => 'pending',
+                    ]);
+                }
+
+                // Add parts to JO if it exists (either found or created)
+                if (isset($jobOrder)) {
+                    foreach ($productItems as $productItem) {
+                        \App\Models\JobOrderPart::create([
+                            'job_order_id' => $jobOrder->id,
+                            'product_id' => $productItem['product']->id,
+                            'part_name' => $productItem['product']->name,
+                            'quantity' => $productItem['quantity'],
+                            'unit_price' => $productItem['product']->price,
+                            'total_price' => $productItem['product']->price * $productItem['quantity'],
+                            'source' => 'purchased',
+                        ]);
+                    }
+                }
+            }
+
+            return back()->with('success', 'Items added successfully.');
+        });
+    }
+
     public function show(Sale $sale)
     {
         $sale->load(['user', 'branch', 'items.product', 'returns.approver']);
 
+        // Fetch data for Mini POS modal (adding items)
+        $branchId = $sale->branch_id;
+
+        // Get products with stock for the sale's branch
+        $products = Product::where('type', 'product')
+            ->whereHas('branches', function ($query) use ($branchId) {
+                $query->where('branch_id', $branchId)
+                    ->where('stock_quantity', '>', 0);
+            })
+            ->with([
+                'branches' => function ($query) use ($branchId) {
+                    $query->where('branch_id', $branchId);
+                },
+                'category'
+            ])
+            ->get();
+
+        // Get services for the sale's branch
+        $services = Product::where('type', 'service')
+            ->whereHas('branches', function ($query) use ($branchId) {
+                $query->where('branch_id', $branchId);
+            })
+            ->with('category')
+            ->get();
+
+        $categories = \App\Models\Category::all();
+
+        // Get mechanics for the sale's branch
+        $mechanics = \App\Models\Mechanic::where('branch_id', $branchId)
+            ->where('is_active', true)
+            ->get();
+
         return Inertia::render('Admin/Sales/Show', [
             'sale' => $sale,
             'receiptUrl' => route('public.receipt', $sale->qr_token),
+            'posData' => [
+                'products' => $products,
+                'services' => $services,
+                'categories' => $categories,
+                'mechanics' => $mechanics,
+            ]
         ]);
     }
 }
