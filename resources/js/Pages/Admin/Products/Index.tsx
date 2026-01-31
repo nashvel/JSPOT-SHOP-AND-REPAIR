@@ -226,9 +226,9 @@ export default function Index({ products, categories: initialCategories, branche
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SKU</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cost</th>
+                                        {typeFilter !== 'service' && <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cost</th>}
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
+                                        {typeFilter !== 'service' && <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>}
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
@@ -255,31 +255,35 @@ export default function Index({ products, categories: initialCategories, branche
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                                     {product.sku || '—'}
                                                 </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                    ₱{Number(product.cost || 0).toLocaleString()}
-                                                </td>
+                                                {typeFilter !== 'service' && (
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                        {product.type === 'product' ? `₱${Number(product.cost || 0).toLocaleString()}` : 'N/A'}
+                                                    </td>
+                                                )}
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
                                                     ₱{Number(product.price).toLocaleString()}
                                                 </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    {product.type === 'product' ? (
-                                                        (() => {
-                                                            const totalStock = Array.isArray(product.branches)
-                                                                ? product.branches.reduce((acc: number, b: any) => acc + (b.pivot?.stock_quantity || 0), 0)
-                                                                : 0;
-                                                            const threshold = product.low_stock_threshold ?? 10;
-                                                            const isLowStock = totalStock <= threshold;
+                                                {typeFilter !== 'service' && (
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        {product.type === 'product' ? (
+                                                            (() => {
+                                                                const totalStock = Array.isArray(product.branches)
+                                                                    ? product.branches.reduce((acc: number, b: any) => acc + (b.pivot?.stock_quantity || 0), 0)
+                                                                    : 0;
+                                                                const threshold = product.low_stock_threshold ?? 10;
+                                                                const isLowStock = totalStock <= threshold;
 
-                                                            return (
-                                                                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${isLowStock ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
-                                                                    {totalStock} Units
-                                                                </span>
-                                                            );
-                                                        })()
-                                                    ) : (
-                                                        <span className="text-gray-400 text-xs">N/A</span>
-                                                    )}
-                                                </td>
+                                                                return (
+                                                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${isLowStock ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
+                                                                        {totalStock} Units
+                                                                    </span>
+                                                                );
+                                                            })()
+                                                        ) : (
+                                                            <span className="text-gray-400 text-xs">N/A</span>
+                                                        )}
+                                                    </td>
+                                                )}
                                             </tr>
                                         ))
                                     ) : (
@@ -402,18 +406,20 @@ export default function Index({ products, categories: initialCategories, branche
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <InputLabel htmlFor="cost" value="Cost (PHP)" />
-                                <TextInput
-                                    id="cost"
-                                    type="number"
-                                    value={data.cost}
-                                    onChange={(e) => setData('cost', e.target.value)}
-                                    className="mt-1 block w-full"
-                                    required
-                                />
-                                {errors.cost && <div className="text-red-500 text-xs mt-1">{errors.cost}</div>}
-                            </div>
+                            {data.type === 'product' && (
+                                <div>
+                                    <InputLabel htmlFor="cost" value="Cost (PHP)" />
+                                    <TextInput
+                                        id="cost"
+                                        type="number"
+                                        value={data.cost}
+                                        onChange={(e) => setData('cost', e.target.value)}
+                                        className="mt-1 block w-full"
+                                        required
+                                    />
+                                    {errors.cost && <div className="text-red-500 text-xs mt-1">{errors.cost}</div>}
+                                </div>
+                            )}
                             <div>
                                 <InputLabel htmlFor="price" value="Price (PHP)" />
                                 <TextInput
