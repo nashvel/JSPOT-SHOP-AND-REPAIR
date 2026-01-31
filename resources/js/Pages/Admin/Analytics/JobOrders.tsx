@@ -1,7 +1,9 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
-import { Wrench, Clock, CheckCircle, XCircle, AlertCircle, Building2 } from 'lucide-react';
+import { Wrench, Clock, CheckCircle, XCircle, AlertCircle, Building2, Download } from 'lucide-react';
 import AnalyticsTabs from './Components/AnalyticsTabs';
+import { useState } from 'react';
+import BranchSelectionModal from '@/Components/BranchSelectionModal';
 
 interface JobOrder {
     id: number;
@@ -37,6 +39,7 @@ interface Props {
 }
 
 export default function JobOrders({ jobOrders, stats, status, dateFilter, branches, selectedBranch, canFilterBranches }: Props) {
+    const [showExportModal, setShowExportModal] = useState(false);
     const handleStatusChange = (newStatus: string) => {
         const params = new URLSearchParams(window.location.search);
         params.set('status', newStatus);
@@ -89,6 +92,23 @@ export default function JobOrders({ jobOrders, stats, status, dateFilter, branch
                             <p className="text-gray-500 text-sm mt-1">Track repair jobs and service requests.</p>
                         </div>
                         <div className="flex flex-wrap gap-2">
+                            <button
+                                onClick={() => {
+                                    if (canFilterBranches && !selectedBranch) {
+                                        setShowExportModal(true);
+                                    } else {
+                                        window.location.href = route('admin.analytics.export.job-orders', {
+                                            branch_id: selectedBranch,
+                                            status: status,
+                                            date: dateFilter
+                                        });
+                                    }
+                                }}
+                                className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700 transition-colors"
+                            >
+                                <Download className="h-4 w-4" /> Export
+                            </button>
+
                             {canFilterBranches && (
                                 <select
                                     value={selectedBranch || ''}
@@ -124,6 +144,22 @@ export default function JobOrders({ jobOrders, stats, status, dateFilter, branch
                             </select>
                         </div>
                     </div>
+
+                    <BranchSelectionModal
+                        isOpen={showExportModal}
+                        onClose={() => setShowExportModal(false)}
+                        onConfirm={(branchId) => {
+                            setShowExportModal(false);
+                            window.location.href = route('admin.analytics.export.job-orders', {
+                                branch_id: branchId,
+                                status: status,
+                                date: dateFilter
+                            });
+                        }}
+                        branches={branches}
+                        title="Export Job Orders Report"
+                        description="Select a branch to export job orders for. Leave as 'All Branches' to export all."
+                    />
 
                     {/* Stats Cards */}
                     <div className="grid grid-cols-2 md:grid-cols-5 gap-4">

@@ -1,8 +1,10 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
-import { DollarSign, ShoppingCart, TrendingUp, Package, Building2, Calendar } from 'lucide-react';
+import { DollarSign, ShoppingCart, TrendingUp, Package, Building2, Calendar, Download } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import AnalyticsTabs from './Components/AnalyticsTabs';
+import { useState } from 'react';
+import BranchSelectionModal from '@/Components/BranchSelectionModal';
 
 interface Sale {
     id: number;
@@ -51,6 +53,7 @@ interface Props {
 }
 
 export default function Sales({ sales, stats, topProducts, dailyBreakdown, dateFilter, dateRange, branches, selectedBranch, canFilterBranches }: Props) {
+    const [showExportModal, setShowExportModal] = useState(false);
     const handleDateFilterChange = (newFilter: string) => {
         const params = new URLSearchParams(window.location.search);
         params.set('date', newFilter);
@@ -94,6 +97,24 @@ export default function Sales({ sales, stats, topProducts, dailyBreakdown, dateF
                             </p>
                         </div>
                         <div className="flex flex-wrap gap-2">
+                            <button
+                                onClick={() => {
+                                    if (canFilterBranches && !selectedBranch) {
+                                        setShowExportModal(true);
+                                    } else {
+                                        window.location.href = route('admin.analytics.export.sales', {
+                                            branch_id: selectedBranch,
+                                            date: dateFilter,
+                                            start: dateRange.start,
+                                            end: dateRange.end
+                                        });
+                                    }
+                                }}
+                                className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700 transition-colors"
+                            >
+                                <Download className="h-4 w-4" /> Export
+                            </button>
+
                             {canFilterBranches && (
                                 <select
                                     value={selectedBranch || ''}
@@ -135,6 +156,23 @@ export default function Sales({ sales, stats, topProducts, dailyBreakdown, dateF
                             )}
                         </div>
                     </div>
+
+                    <BranchSelectionModal
+                        isOpen={showExportModal}
+                        onClose={() => setShowExportModal(false)}
+                        onConfirm={(branchId) => {
+                            setShowExportModal(false);
+                            window.location.href = route('admin.analytics.export.sales', {
+                                branch_id: branchId,
+                                date: dateFilter,
+                                start: dateRange.start,
+                                end: dateRange.end
+                            });
+                        }}
+                        branches={branches}
+                        title="Export Sales Report"
+                        description="Select a branch to export sales data for. Leave as 'All Branches' to export for all."
+                    />
 
                     {/* Stats Cards */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

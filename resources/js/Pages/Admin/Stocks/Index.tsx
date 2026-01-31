@@ -21,6 +21,7 @@ interface Product {
     price: number;
     cost: number;
     description: string | null;
+    low_stock_threshold?: number;
     category_id: number | null;
     category: { id: number; name: string } | null;
     branches: Branch[];
@@ -36,7 +37,7 @@ interface Props {
     };
     branches: { id: number; name: string }[];
     categories: { id: number; name: string; type: string }[];
-    filters: { search?: string; branch_id?: number };
+    filters: { search?: string; branch_id?: number; low_stock?: string };
     userBranchId: number | null;
 }
 
@@ -155,7 +156,59 @@ export default function Index({ products, branches, categories, filters, userBra
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
                     <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
 
-                        {/* Flash Messages */}
+                        {/* Header & Actions */}
+                        <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                            <div>
+                                <h3 className="text-lg font-bold text-gray-900">Inventory Management</h3>
+                                <p className="text-sm text-gray-500">Adjust stock levels and manage product inventory.</p>
+                            </div>
+                            <div className="flex gap-2 w-full md:w-auto">
+                                <div className="relative flex-1 md:w-64">
+                                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                                    <input
+                                        type="text"
+                                        placeholder="Search inventory..."
+                                        value={search}
+                                        onChange={handleSearch}
+                                        className="pl-9 w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                                    />
+                                </div>
+
+                                {/* Stock Filter Dropdown */}
+                                <select
+                                    value={filters.low_stock ? 'low_stock' : 'all'}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        router.get(route('admin.stocks.index'), {
+                                            search,
+                                            branch_id: branchId,
+                                            low_stock: val === 'low_stock' ? true : undefined
+                                        }, { preserveState: true, replace: true });
+                                    }}
+                                    className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                                >
+                                    <option value="all">All Stock</option>
+                                    <option value="low_stock">Low Stock</option>
+                                </select>
+
+                                {/* Branch Filter (For System Admin) */}
+                                {!userBranchId && (
+                                    <select
+                                        value={branchId}
+                                        onChange={(e) => handleBranchFilter(e.target.value)}
+                                        className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                                    >
+                                        <option value="">All Branches</option>
+                                        {branches.map((branch) => (
+                                            <option key={branch.id} value={branch.id}>
+                                                {branch.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                )}
+                            </div>
+                        </div>
+                        {/* Flash Messages - Displayed below header actions now */}
                         {flash?.success && (
                             <div className="mb-4 rounded-md bg-green-50 p-4 border border-green-200">
                                 <p className="text-sm font-medium text-green-800">{flash.success}</p>
@@ -166,42 +219,6 @@ export default function Index({ products, branches, categories, filters, userBra
                                 <p className="text-sm font-medium text-red-800">{flash.error}</p>
                             </div>
                         )}
-
-                        {/* Header */}
-                        <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-                            <div>
-                                <h3 className="text-lg font-bold text-gray-900">Inventory Management</h3>
-                                <p className="text-sm text-gray-500">
-                                    Adjust stock levels and manage product inventory.
-                                    {userBranchId && <span className="text-indigo-600 font-medium"> (Showing your branch)</span>}
-                                </p>
-                            </div>
-                            <div className="flex gap-2 w-full md:w-auto">
-                                <div className="relative flex-1 md:w-64">
-                                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-                                    <input
-                                        type="text"
-                                        placeholder="Search products..."
-                                        value={search}
-                                        onChange={handleSearch}
-                                        className="pl-9 w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                                    />
-                                </div>
-                                {/* Branch Filter (System Admin Only) */}
-                                {!userBranchId && (
-                                    <select
-                                        value={branchId}
-                                        onChange={(e) => handleBranchFilter(e.target.value)}
-                                        className="rounded-lg border-gray-300 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                                    >
-                                        <option value="">All Branches</option>
-                                        {branches?.map((branch) => (
-                                            <option key={branch.id} value={branch.id}>{branch.name}</option>
-                                        ))}
-                                    </select>
-                                )}
-                            </div>
-                        </div>
 
                         {/* Products Table */}
                         <div className="overflow-x-auto border rounded-lg">
@@ -221,7 +238,9 @@ export default function Index({ products, branches, categories, filters, userBra
                                     {products.data.length > 0 ? (
                                         products.data.map((product) => {
                                             const totalStock = getTotalStock(product);
-                                            const isLowStock = totalStock < 10;
+                                            const threshold = product.low_stock_threshold ?? 10;
+                                            // Low stock if total stock is less than or equal to threshold
+                                            const isLowStock = totalStock <= threshold;
                                             return (
                                                 <tr key={product.id} className="hover:bg-gray-50">
                                                     <td className="px-6 py-4 whitespace-nowrap">

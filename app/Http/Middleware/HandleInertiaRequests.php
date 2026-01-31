@@ -97,6 +97,54 @@ class HandleInertiaRequests extends Middleware
                 'success' => fn() => $request->session()->get('success'),
                 'error' => fn() => $request->session()->get('error'),
             ],
+            'lowStockState' => function () use ($user) {
+                if (!$user)
+                    return ['count' => 0, 'items' => []];
+
+                $query = \App\Models\Product::where('type', 'product');
+
+                if ($user->branch_id) {
+                    // Branch User: Check stock only in their branch
+                    $lowStockItems = $query->join('branch_product', 'products.id', '=', 'branch_product.product_id')
+                        ->where('branch_product.branch_id', $user->branch_id)
+                        ->whereRaw('branch_product.stock_quantity <= products.low_stock_threshold')
+                        ->select('products.id', 'products.name', 'branch_product.stock_quantity as stock', 'products.low_stock_threshold')
+                        ->limit(5)
+                        ->get();
+
+                    $count = \App\Models\Product::where('type', 'product')
+                        ->whereHas('branches', function ($q) use ($user) {
+                            $q->where('branch_id', $user->branch_id)
+                                ->whereRaw('branch_product.stock_quantity <= products.low_stock_threshold');
+                        })->count();
+
+                    return [
+                        'count' => $count,
+                        'items' => $lowStockItems
+                    ];
+                } else {
+                    // System Admin: Check stock across all branches
+                    $lowStockItems = \DB::table('branch_product')
+                        ->join('products', 'branch_product.product_id', '=', 'products.id')
+                        ->join('branches', 'branch_product.branch_id', '=', 'branches.id')
+                        ->where('products.type', 'product')
+                        ->whereRaw('branch_product.stock_quantity <= products.low_stock_threshold')
+                        ->select('products.id', 'products.name', 'branch_product.stock_quantity as stock', 'products.low_stock_threshold', 'branches.name as branch_name')
+                        ->limit(5)
+                        ->get();
+
+                    $count = \DB::table('branch_product')
+                        ->join('products', 'branch_product.product_id', '=', 'products.id')
+                        ->where('products.type', 'product')
+                        ->whereRaw('branch_product.stock_quantity <= products.low_stock_threshold')
+                        ->count();
+
+                    return [
+                        'count' => $count,
+                        'items' => $lowStockItems
+                    ];
+                }
+            },
         ];
     }
 }

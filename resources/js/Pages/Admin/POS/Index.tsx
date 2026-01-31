@@ -241,10 +241,10 @@ export default function Index({ products, services, categories, mechanics, emplo
                 {/* Main Content - Grid */}
                 <div className="flex-1 flex flex-col min-w-0">
                     {/* Top Bar */}
-                    <div className="bg-white border-b border-gray-200 p-4 sticky top-0 z-10">
+                    <div className="bg-white border-b border-gray-200 p-4 sticky top-0 z-10 space-y-4">
                         <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
 
-                            <div className="flex gap-4 w-full md:w-auto items-center">
+                            <div className="flex gap-4 w-full md:w-auto items-center flex-1">
                                 {/* Branch Selector (System Admin Only) */}
                                 {canSelectBranch && branches.length > 0 && (
                                     <div className="relative min-w-[200px] hidden md:block">
@@ -305,38 +305,36 @@ export default function Index({ products, services, categories, mechanics, emplo
                                 </button>
                             </div>
 
-                            <div className="flex gap-4 w-full md:w-auto">
-                                {/* Category Dropdown */}
-                                <div className="relative min-w-[150px] md:min-w-[200px] flex-1">
-                                    <select
-                                        value={selectedCategory}
-                                        onChange={(e) => setSelectedCategory(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-                                        className="w-full pl-4 pr-10 py-2.5 bg-gray-50 border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-sm font-medium appearance-none cursor-pointer"
-                                    >
-                                        <option value="all">All Categories</option>
-                                        {currentCategories.map(category => (
-                                            <option key={category.id} value={category.id}>
-                                                {category.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-500">
-                                        <Menu className="h-4 w-4" />
-                                    </div>
-                                </div>
-
-                                {/* Search */}
-                                <div className="relative flex-1 md:w-80">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                                    <input
-                                        type="text"
-                                        placeholder="Search..."
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                        className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-sm"
-                                    />
+                            {/* Category Dropdown */}
+                            <div className="relative w-full md:w-64">
+                                <select
+                                    value={selectedCategory}
+                                    onChange={(e) => setSelectedCategory(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+                                    className="w-full pl-4 pr-10 py-2.5 bg-gray-50 border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-sm font-medium appearance-none cursor-pointer"
+                                >
+                                    <option value="all">All Categories</option>
+                                    {currentCategories.map(category => (
+                                        <option key={category.id} value={category.id}>
+                                            {category.name}
+                                        </option>
+                                    ))}
+                                </select>
+                                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-500">
+                                    <Menu className="h-4 w-4" />
                                 </div>
                             </div>
+                        </div>
+
+                        {/* Search Bar - New Row */}
+                        <div className="relative w-full">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                            <input
+                                type="text"
+                                placeholder="Search products or services..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-sm"
+                            />
                         </div>
                     </div>
 

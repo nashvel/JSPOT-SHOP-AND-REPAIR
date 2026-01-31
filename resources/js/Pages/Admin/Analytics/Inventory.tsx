@@ -1,7 +1,9 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router } from '@inertiajs/react';
-import { Package, AlertTriangle, XCircle, CheckCircle, Building2, DollarSign } from 'lucide-react';
+import { Package, AlertTriangle, XCircle, CheckCircle, Building2, DollarSign, Download } from 'lucide-react';
 import AnalyticsTabs from './Components/AnalyticsTabs';
+import { useState } from 'react';
+import BranchSelectionModal from '@/Components/BranchSelectionModal';
 
 interface InventoryItem {
     id: number;
@@ -38,6 +40,7 @@ interface Props {
 }
 
 export default function Inventory({ inventory, stats, filter, threshold, branches, selectedBranch, canFilterBranches }: Props) {
+    const [showExportModal, setShowExportModal] = useState(false);
     const handleFilterChange = (newFilter: string) => {
         const params = new URLSearchParams(window.location.search);
         params.set('filter', newFilter);
@@ -73,6 +76,23 @@ export default function Inventory({ inventory, stats, filter, threshold, branche
                             <p className="text-gray-500 text-sm mt-1">Monitor stock levels and identify reorder needs.</p>
                         </div>
                         <div className="flex gap-2">
+                            <button
+                                onClick={() => {
+                                    if (canFilterBranches && !selectedBranch) {
+                                        setShowExportModal(true);
+                                    } else {
+                                        window.location.href = route('admin.analytics.export.inventory', {
+                                            branch_id: selectedBranch,
+                                            filter: filter,
+                                            threshold: threshold
+                                        });
+                                    }
+                                }}
+                                className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700 transition-colors"
+                            >
+                                <Download className="h-4 w-4" /> Export
+                            </button>
+
                             {canFilterBranches && (
                                 <select
                                     value={selectedBranch || ''}
@@ -97,6 +117,22 @@ export default function Inventory({ inventory, stats, filter, threshold, branche
                             </select>
                         </div>
                     </div>
+
+                    <BranchSelectionModal
+                        isOpen={showExportModal}
+                        onClose={() => setShowExportModal(false)}
+                        onConfirm={(branchId) => {
+                            setShowExportModal(false);
+                            window.location.href = route('admin.analytics.export.inventory', {
+                                branch_id: branchId,
+                                filter: filter,
+                                threshold: threshold
+                            });
+                        }}
+                        branches={branches}
+                        title="Export Inventory Report"
+                        description="Select a branch to export inventory data for. Leave as 'All Branches' to export all."
+                    />
 
                     {/* Stats Cards */}
                     <div className="grid grid-cols-2 md:grid-cols-5 gap-4">

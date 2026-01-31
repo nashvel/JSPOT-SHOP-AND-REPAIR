@@ -38,6 +38,22 @@ class ProductController extends Controller
             ->when($request->type, function ($query, $type) {
                 $query->where('type', $type);
             })
+
+            ->when($request->boolean('low_stock'), function ($query) use ($user, $request) {
+                // Filter products that have stock <= threshold in the relevant branch
+                $query->whereHas('branches', function ($q) use ($user, $request) {
+                    if ($user->branch_id) {
+                        $q->where('branch_id', $user->branch_id)
+                            ->whereRaw('branch_product.stock_quantity <= products.low_stock_threshold');
+                    } elseif ($request->branch_id) {
+                        $q->where('branch_id', $request->branch_id)
+                            ->whereRaw('branch_product.stock_quantity <= products.low_stock_threshold');
+                    } else {
+                        // System Admin: check if ANY branch has low stock
+                        $q->whereRaw('branch_product.stock_quantity <= products.low_stock_threshold');
+                    }
+                });
+            })
             ->latest()
             ->paginate(10)
             ->withQueryString();
@@ -63,7 +79,7 @@ class ProductController extends Controller
             'products' => $products,
             'categories' => $categories,
             'branches' => $branches,
-            'filters' => $request->only(['search', 'type', 'branch_id']),
+            'filters' => $request->only(['search', 'type', 'branch_id', 'low_stock']),
             'userBranchId' => $user->branch_id,
         ]);
     }
@@ -78,6 +94,7 @@ class ProductController extends Controller
             'price' => 'required|numeric|min:0',
             'cost' => 'required|numeric|min:0',
             'category_id' => 'nullable|exists:categories,id',
+            'low_stock_threshold' => 'nullable|integer|min:0',
         ]);
 
         $user = auth()->user();
@@ -109,6 +126,7 @@ class ProductController extends Controller
             'price' => 'required|numeric|min:0',
             'cost' => 'required|numeric|min:0',
             'category_id' => 'nullable|exists:categories,id',
+            'low_stock_threshold' => 'nullable|integer|min:0',
         ]);
 
         // Don't allow changing type after creation

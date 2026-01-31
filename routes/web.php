@@ -97,6 +97,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('admin/analytics/sales', [\App\Http\Controllers\Admin\AnalyticsController::class, 'sales'])->name('admin.analytics.sales');
     Route::get('admin/analytics/job-orders', [\App\Http\Controllers\Admin\AnalyticsController::class, 'jobOrders'])->name('admin.analytics.job-orders');
 
+    // Exports
+    Route::get('admin/analytics/export/sales', [\App\Http\Controllers\Admin\AnalyticsController::class, 'exportSales'])->name('admin.analytics.export.sales');
+    Route::get('admin/analytics/export/inventory', [\App\Http\Controllers\Admin\AnalyticsController::class, 'exportInventory'])->name('admin.analytics.export.inventory');
+    Route::get('admin/analytics/export/job-orders', [\App\Http\Controllers\Admin\AnalyticsController::class, 'exportJobOrders'])->name('admin.analytics.export.job-orders');
+
     // Super Admin Panel (only accessible by super admins)
     Route::get('admin/super-admin', [\App\Http\Controllers\Admin\SuperAdminController::class, 'index'])->name('admin.super-admin.index');
     Route::post('admin/super-admin', [\App\Http\Controllers\Admin\SuperAdminController::class, 'store'])->name('admin.super-admin.store');
