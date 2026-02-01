@@ -2,6 +2,10 @@
  * Sync Logic for Offline/Online Data Synchronization
  * 
  * Handles pushing local data to the server and pulling updates from the server.
+ * Features:
+ * - Priority queue (sales first)
+ * - Exponential backoff retry
+ * - Progress tracking
  */
 
 import db, {
@@ -13,6 +17,17 @@ import db, {
     getUnsyncedCount,
 } from './db';
 import axios from 'axios';
+import {
+    withRetry,
+    buildSyncQueue,
+    onProgressChange,
+    getProgress,
+    resetProgress,
+    SyncProgress,
+    SyncError,
+    SyncItemType,
+    DEFAULT_RETRY_CONFIG,
+} from './syncQueue';
 
 // ============================================
 // Types
@@ -32,6 +47,7 @@ interface SyncResult {
         products: number;
     };
     errors: string[];
+    progress: SyncProgress;
 }
 
 interface ServerIdMapping {
@@ -47,6 +63,46 @@ let isSyncing = false;
 let lastSyncTime: Date | null = null;
 let syncListeners: Array<(result: SyncResult) => void> = [];
 
+// Progress state
+let currentProgress: SyncProgress = {
+    status: 'idle',
+    currentStep: '',
+    totalItems: 0,
+    completedItems: 0,
+    failedItems: 0,
+    percentage: 0,
+    currentType: null,
+    currentItemId: null,
+    errors: [],
+    startedAt: null,
+    completedAt: null,
+};
+
+type ProgressListener = (progress: SyncProgress) => void;
+let progressListeners: ProgressListener[] = [];
+
+export function onSyncProgress(listener: ProgressListener): () => void {
+    progressListeners.push(listener);
+    listener(currentProgress);
+    return () => {
+        progressListeners = progressListeners.filter(l => l !== listener);
+    };
+}
+
+function updateProgress(updates: Partial<SyncProgress>): void {
+    currentProgress = { ...currentProgress, ...updates };
+    if (currentProgress.totalItems > 0) {
+        currentProgress.percentage = Math.round(
+            (currentProgress.completedItems / currentProgress.totalItems) * 100
+        );
+    }
+    progressListeners.forEach(listener => listener(currentProgress));
+}
+
+export function getSyncProgress(): SyncProgress {
+    return { ...currentProgress };
+}
+
 export function onSyncComplete(listener: (result: SyncResult) => void): () => void {
     syncListeners.push(listener);
     return () => {
@@ -60,6 +116,7 @@ function notifySyncComplete(result: SyncResult): void {
 
 // ============================================
 // Push to Server (Upload unsynced data)
+// With Priority Queue and Retry Logic
 // ============================================
 
 export async function syncToServer(): Promise<SyncResult> {
@@ -68,6 +125,7 @@ export async function syncToServer(): Promise<SyncResult> {
         pushed: { categories: 0, products: 0, sales: 0, jobOrders: 0, attendance: 0 },
         pulled: { categories: 0, products: 0 },
         errors: [],
+        progress: currentProgress,
     };
 
     // Check if online
@@ -85,7 +143,7 @@ export async function syncToServer(): Promise<SyncResult> {
     isSyncing = true;
 
     try {
-        // Get all unsynced records
+        // Get all unsynced records (sorted by priority)
         const [
             unsyncedSales,
             unsyncedJobOrders,
@@ -96,83 +154,214 @@ export async function syncToServer(): Promise<SyncResult> {
             db.attendance.filter(r => !r.synced).toArray(),
         ]);
 
-        // Push sales
+        const totalItems = unsyncedSales.length + unsyncedJobOrders.length + unsyncedAttendance.length;
+
+        // Initialize progress
+        updateProgress({
+            status: 'syncing',
+            currentStep: 'Starting sync...',
+            totalItems,
+            completedItems: 0,
+            failedItems: 0,
+            percentage: 0,
+            errors: [],
+            startedAt: new Date(),
+            completedAt: null,
+        });
+
+        // PRIORITY 1: Push sales first (most critical)
         if (unsyncedSales.length > 0) {
-            try {
-                const response = await axios.post('/api/sync/push/sales', {
-                    sales: unsyncedSales.map(transformSaleForServer),
-                });
+            updateProgress({
+                currentStep: `Syncing ${unsyncedSales.length} sales...`,
+                currentType: 'sales',
+            });
 
-                if (response.data.success) {
-                    const mappings: ServerIdMapping[] = response.data.mappings || [];
+            for (const sale of unsyncedSales) {
+                try {
+                    updateProgress({ currentItemId: sale.id });
 
-                    // Update local records with server IDs
-                    for (const mapping of mappings) {
-                        await db.sales.update(mapping.localId, {
-                            serverId: mapping.serverId,
-                            synced: true,
-                        });
-                    }
+                    await withRetry(
+                        async () => {
+                            const response = await axios.post('/api/sync/push/sales', {
+                                sales: [transformSaleForServer(sale)],
+                            });
 
-                    result.pushed.sales = unsyncedSales.length;
+                            if (response.data.success) {
+                                const mappings: ServerIdMapping[] = response.data.mappings || [];
+                                const mapping = mappings.find(m => m.localId === sale.id);
+
+                                if (mapping) {
+                                    await db.sales.update(sale.id, {
+                                        serverId: mapping.serverId,
+                                        synced: true,
+                                    });
+                                }
+
+                                result.pushed.sales++;
+                            } else {
+                                throw new Error(response.data.message || 'Server rejected sale');
+                            }
+                        },
+                        DEFAULT_RETRY_CONFIG,
+                        (attempt, error, delay) => {
+                            console.log(`[Sync] Retrying sale ${sale.saleNumber}, attempt ${attempt}: ${error.message}`);
+                        }
+                    );
+
+                    updateProgress({ completedItems: currentProgress.completedItems + 1 });
+
+                } catch (error: any) {
+                    const syncError: SyncError = {
+                        itemId: sale.id,
+                        type: 'sales',
+                        message: error.message,
+                        timestamp: new Date(),
+                        retryCount: DEFAULT_RETRY_CONFIG.maxRetries,
+                    };
+
+                    currentProgress.errors.push(syncError);
+                    updateProgress({ failedItems: currentProgress.failedItems + 1 });
+                    result.errors.push(`Sale ${sale.saleNumber} failed: ${error.message}`);
                 }
-            } catch (error: any) {
-                result.errors.push(`Sales sync failed: ${error.message}`);
             }
         }
 
-        // Push job orders
+        // PRIORITY 2: Push job orders
         if (unsyncedJobOrders.length > 0) {
-            try {
-                const response = await axios.post('/api/sync/push/job-orders', {
-                    jobOrders: unsyncedJobOrders.map(transformJobOrderForServer),
-                });
+            updateProgress({
+                currentStep: `Syncing ${unsyncedJobOrders.length} job orders...`,
+                currentType: 'jobOrders',
+            });
 
-                if (response.data.success) {
-                    const mappings: ServerIdMapping[] = response.data.mappings || [];
+            for (const jobOrder of unsyncedJobOrders) {
+                try {
+                    updateProgress({ currentItemId: jobOrder.id });
 
-                    for (const mapping of mappings) {
-                        await db.jobOrders.update(mapping.localId, {
-                            serverId: mapping.serverId,
-                            synced: true,
-                        });
-                    }
+                    await withRetry(
+                        async () => {
+                            const response = await axios.post('/api/sync/push/job-orders', {
+                                jobOrders: [transformJobOrderForServer(jobOrder)],
+                            });
 
-                    result.pushed.jobOrders = unsyncedJobOrders.length;
+                            if (response.data.success) {
+                                const mappings: ServerIdMapping[] = response.data.mappings || [];
+                                const mapping = mappings.find(m => m.localId === jobOrder.id);
+
+                                if (mapping) {
+                                    await db.jobOrders.update(jobOrder.id, {
+                                        serverId: mapping.serverId,
+                                        synced: true,
+                                    });
+                                }
+
+                                result.pushed.jobOrders++;
+                            } else {
+                                throw new Error(response.data.message || 'Server rejected job order');
+                            }
+                        },
+                        DEFAULT_RETRY_CONFIG,
+                        (attempt, error, delay) => {
+                            console.log(`[Sync] Retrying job order ${jobOrder.jobOrderNumber}, attempt ${attempt}`);
+                        }
+                    );
+
+                    updateProgress({ completedItems: currentProgress.completedItems + 1 });
+
+                } catch (error: any) {
+                    const syncError: SyncError = {
+                        itemId: jobOrder.id,
+                        type: 'jobOrders',
+                        message: error.message,
+                        timestamp: new Date(),
+                        retryCount: DEFAULT_RETRY_CONFIG.maxRetries,
+                    };
+
+                    currentProgress.errors.push(syncError);
+                    updateProgress({ failedItems: currentProgress.failedItems + 1 });
+                    result.errors.push(`Job Order ${jobOrder.jobOrderNumber} failed: ${error.message}`);
                 }
-            } catch (error: any) {
-                result.errors.push(`Job orders sync failed: ${error.message}`);
             }
         }
 
-        // Push attendance
+        // PRIORITY 3: Push attendance
         if (unsyncedAttendance.length > 0) {
-            try {
-                const response = await axios.post('/api/sync/push/attendance', {
-                    attendance: unsyncedAttendance.map(transformAttendanceForServer),
-                });
+            updateProgress({
+                currentStep: `Syncing ${unsyncedAttendance.length} attendance records...`,
+                currentType: 'attendance',
+            });
 
-                if (response.data.success) {
-                    const mappings: ServerIdMapping[] = response.data.mappings || [];
+            for (const attendance of unsyncedAttendance) {
+                try {
+                    updateProgress({ currentItemId: attendance.id });
 
-                    for (const mapping of mappings) {
-                        await db.attendance.update(mapping.localId, {
-                            serverId: mapping.serverId,
-                            synced: true,
-                        });
-                    }
+                    await withRetry(
+                        async () => {
+                            const response = await axios.post('/api/sync/push/attendance', {
+                                attendance: [transformAttendanceForServer(attendance)],
+                            });
 
-                    result.pushed.attendance = unsyncedAttendance.length;
+                            if (response.data.success) {
+                                const mappings: ServerIdMapping[] = response.data.mappings || [];
+                                const mapping = mappings.find(m => m.localId === attendance.id);
+
+                                if (mapping) {
+                                    await db.attendance.update(attendance.id, {
+                                        serverId: mapping.serverId,
+                                        synced: true,
+                                    });
+                                }
+
+                                result.pushed.attendance++;
+                            } else {
+                                throw new Error(response.data.message || 'Server rejected attendance');
+                            }
+                        },
+                        DEFAULT_RETRY_CONFIG,
+                        (attempt, error, delay) => {
+                            console.log(`[Sync] Retrying attendance, attempt ${attempt}`);
+                        }
+                    );
+
+                    updateProgress({ completedItems: currentProgress.completedItems + 1 });
+
+                } catch (error: any) {
+                    const syncError: SyncError = {
+                        itemId: attendance.id,
+                        type: 'attendance',
+                        message: error.message,
+                        timestamp: new Date(),
+                        retryCount: DEFAULT_RETRY_CONFIG.maxRetries,
+                    };
+
+                    currentProgress.errors.push(syncError);
+                    updateProgress({ failedItems: currentProgress.failedItems + 1 });
+                    result.errors.push(`Attendance failed: ${error.message}`);
                 }
-            } catch (error: any) {
-                result.errors.push(`Attendance sync failed: ${error.message}`);
             }
         }
+
+        // Complete
+        const hasErrors = currentProgress.errors.length > 0;
+        updateProgress({
+            status: hasErrors ? 'error' : 'complete',
+            currentStep: hasErrors
+                ? `Completed with ${currentProgress.failedItems} errors`
+                : `Successfully synced ${currentProgress.completedItems} items`,
+            currentType: null,
+            currentItemId: null,
+            completedAt: new Date(),
+        });
 
         result.success = result.errors.length === 0;
+        result.progress = currentProgress;
         lastSyncTime = new Date();
 
     } catch (error: any) {
+        updateProgress({
+            status: 'error',
+            currentStep: `Sync failed: ${error.message}`,
+            completedAt: new Date(),
+        });
         result.errors.push(`Sync failed: ${error.message}`);
     } finally {
         isSyncing = false;
@@ -192,6 +381,7 @@ export async function fetchFromServer(branchId: number): Promise<SyncResult> {
         pushed: { categories: 0, products: 0, sales: 0, jobOrders: 0, attendance: 0 },
         pulled: { categories: 0, products: 0 },
         errors: [],
+        progress: currentProgress,
     };
 
     if (!navigator.onLine) {

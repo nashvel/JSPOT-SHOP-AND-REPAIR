@@ -135,6 +135,23 @@ export interface OfflineAttendance {
     createdAt: Date;
 }
 
+export interface OfflineSyncConflict {
+    id: string;
+    type: 'stock' | 'jobOrder' | 'product' | 'price';
+    itemId: string;
+    itemName: string;
+    itemType: 'product' | 'jobOrder';
+    localValue: any;
+    serverValue: any;
+    localUpdatedAt: Date;
+    serverUpdatedAt: Date;
+    branchId: number;
+    resolved: boolean;
+    resolution: 'local' | 'server' | 'pending';
+    detectedAt: Date;
+    resolvedAt: Date | null;
+}
+
 // ============================================
 // Dexie Database Class
 // ============================================
@@ -145,6 +162,7 @@ class JspotDatabase extends Dexie {
     sales!: Table<OfflineSale, string>;
     jobOrders!: Table<OfflineJobOrder, string>;
     attendance!: Table<OfflineAttendance, string>;
+    conflicts!: Table<OfflineSyncConflict, string>;
 
     constructor() {
         super('JspotPOS');
@@ -156,6 +174,16 @@ class JspotDatabase extends Dexie {
             sales: 'id, serverId, saleNumber, branchId, status, synced, createdAt',
             jobOrders: 'id, serverId, jobOrderNumber, branchId, status, synced, createdAt',
             attendance: 'id, serverId, userId, branchId, synced, createdAt',
+        });
+
+        // Version 2: Add conflicts table
+        this.version(2).stores({
+            categories: 'id, serverId, name, type, synced, branchId',
+            products: 'id, serverId, name, sku, type, categoryId, branchId, synced',
+            sales: 'id, serverId, saleNumber, branchId, status, synced, createdAt',
+            jobOrders: 'id, serverId, jobOrderNumber, branchId, status, synced, createdAt',
+            attendance: 'id, serverId, userId, branchId, synced, createdAt',
+            conflicts: 'id, type, itemId, branchId, resolved, detectedAt',
         });
     }
 }
