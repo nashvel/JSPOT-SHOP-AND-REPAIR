@@ -2,7 +2,8 @@ import { PropsWithChildren, ReactNode, useState, useRef, useEffect } from 'react
 import { Link, usePage, router } from '@inertiajs/react';
 import { LayoutDashboard, Users, FileText, Settings, LogOut, Shield, Search, Folder, LifeBuoy, MoreHorizontal, PanelLeftClose, ShoppingCart, ClipboardList, Package, ArrowLeftRight, Store, XCircle, MapPin, Receipt, BarChart3, PieChart, ClipboardCheck, Menu, Bell, Wifi, WifiOff, RefreshCw } from 'lucide-react';
 import ApplicationLogo from '@/Components/ApplicationLogo';
-import { getUnsyncedCount, syncToServer, isSyncInProgress } from '@/lib/sync';
+import { getUnsyncedCount, syncToServer, isSyncInProgress, setupAutoSync, stopAutoSync, onSyncProgress, getSyncProgress } from '@/lib/sync';
+import { SyncProgress } from '@/lib/syncQueue';
 
 const DropdownNotification = ({ lowStockState }: { lowStockState: any }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -97,6 +98,54 @@ const DropdownNotification = ({ lowStockState }: { lowStockState: any }) => {
     );
 };
 
+
+
+const SyncModal = () => {
+    const [progress, setProgress] = useState<SyncProgress>(getSyncProgress());
+    const [visible, setVisible] = useState(false);
+
+    useEffect(() => {
+        // Initial check
+        const current = getSyncProgress();
+        if (current.status === 'syncing') {
+            setVisible(true);
+            setProgress(current);
+        }
+
+        const unsubscribe = onSyncProgress((p) => {
+            setVisible(p.status === 'syncing');
+            setProgress(p);
+        });
+
+        return unsubscribe;
+    }, []);
+
+    if (!visible) return null;
+
+    return (
+        <div className="fixed inset-0 z-[60] bg-gray-900/50 backdrop-blur-sm flex items-center justify-center">
+            <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-4 text-center animate-in fade-in zoom-in-95 duration-200">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-indigo-100 mb-4">
+                    <RefreshCw className="h-8 w-8 text-indigo-600 animate-spin" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-900 mb-2">Syncing Data...</h3>
+                <p className="text-sm text-gray-500 mb-6">{progress.currentStep || 'Please wait while we sync your data.'}</p>
+
+                <div className="w-full bg-gray-200 rounded-full h-2.5 mb-2 overflow-hidden">
+                    <div
+                        className="bg-indigo-600 h-2.5 rounded-full transition-all duration-300 ease-out"
+                        style={{ width: `${Math.max(5, progress.percentage)}%` }}
+                    ></div>
+                </div>
+                <div className="flex justify-between text-xs text-gray-400">
+                    <span>{progress.completedItems} / {progress.totalItems} items</span>
+                    <span>{progress.percentage}%</span>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 // Connection Status Indicator
 const ConnectionStatus = () => {
     const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -148,8 +197,8 @@ const ConnectionStatus = () => {
             {/* Connection indicator */}
             <div
                 className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${isOnline
-                        ? 'bg-green-50 text-green-700'
-                        : 'bg-red-50 text-red-700'
+                    ? 'bg-green-50 text-green-700'
+                    : 'bg-red-50 text-red-700'
                     }`}
             >
                 {isOnline ? (
@@ -194,6 +243,17 @@ export default function Authenticated({
     const { auth, impersonating } = usePage().props as any;
     const user = auth.user;
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+    // Initialize auto-sync
+    useEffect(() => {
+        // Use user's branch ID or 0 for all branches
+        const branchId = user.branch_id ? Number(user.branch_id) : 0;
+        setupAutoSync(branchId);
+
+        return () => {
+            stopAutoSync();
+        };
+    }, [user.branch_id]);
 
     // Icon mapping
     const iconMap: Record<string, any> = {
@@ -242,6 +302,9 @@ export default function Authenticated({
                     onClick={() => setIsSidebarOpen(false)}
                 />
             )}
+
+            {/* Sync Blocking Modal */}
+            <SyncModal />
 
             {/* Sidebar */}
             <div className={`fixed inset-y-0 left-0 z-50 w-64 border-r border-gray-200 bg-white flex flex-col transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>

@@ -2,6 +2,9 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { Search, Eye, Filter, RefreshCw, Banknote, Smartphone, CreditCard } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { useOfflineSales } from '@/lib/useOfflineSales';
+import { useOfflineData } from '@/lib/useOfflineData';
+import ViewSaleModal from './Components/ViewSaleModal';
 
 interface SaleItem {
     id: number;
@@ -49,7 +52,23 @@ export default function Index({ sales, branches, filters, userBranchId }: Props)
     const [startDate, setStartDate] = useState(filters.start_date || '');
     const [endDate, setEndDate] = useState(filters.end_date || '');
     const [branchId, setBranchId] = useState(filters.branch_id || '');
+    // Offline Hooks
+    const effectiveBranchId = userBranchId || (branchId ? Number(branchId) : 0);
+    const { isOffline } = useOfflineData({ branchId: effectiveBranchId });
+    const { offlineSales } = useOfflineSales(effectiveBranchId);
+    const [viewSaleModal, setViewSaleModal] = useState<{ show: boolean; sale: any | null }>({ show: false, sale: null });
 
+    // Filter logic for display
+    const displaySales = isOffline ? offlineSales.filter(s => {
+        const matchesSearch = search ? (
+            s.saleNumber.toLowerCase().includes(search.toLowerCase()) ||
+            (s.customerName && s.customerName.toLowerCase().includes(search.toLowerCase()))
+        ) : true;
+        // Basic search filter for offline, can extend for date/payment method if needed
+        return matchesSearch;
+    }) : sales.data;
+
+    // Auto-search with debounce
     // Auto-search with debounce
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -105,7 +124,14 @@ export default function Index({ sales, branches, filters, userBranchId }: Props)
                     {/* Header Section */}
                     <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                         <div>
-                            <h1 className="text-2xl font-bold text-gray-900">Sales Records</h1>
+                            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                                Sales Records
+                                {isOffline && (
+                                    <span className="px-2 py-0.5 rounded text-xs font-bold bg-gray-600 text-white">
+                                        OFFLINE MODE
+                                    </span>
+                                )}
+                            </h1>
                             <p className="text-gray-500">View and manage all completed sales</p>
                         </div>
                         <div className="flex gap-2">
@@ -182,42 +208,59 @@ export default function Index({ sales, branches, filters, userBranchId }: Props)
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200">
-                                {sales.data.map(sale => (
+                                {(isOffline ? displaySales : sales.data).map(sale => (
                                     <tr key={sale.id} className="hover:bg-gray-50">
                                         <td className="px-6 py-4">
-                                            <span className="font-mono font-medium text-indigo-600">{sale.sale_number}</span>
+                                            <span className="font-mono font-medium text-indigo-600">
+                                                {(sale as any).sale_number || (sale as any).saleNumber}
+                                            </span>
+                                            {isOffline && !(sale as any).synced && (
+                                                <span className="ml-2 px-1.5 py-0.5 text-[10px] bg-amber-100 text-amber-700 rounded-full">
+                                                    Unsynced
+                                                </span>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4">
-                                            <div className="font-medium text-gray-900">{sale.customer_name}</div>
-                                            <div className="text-sm text-gray-500">{sale.user?.name}</div>
+                                            <div className="font-medium text-gray-900">{(sale as any).customer_name || (sale as any).customerName || 'Walk-in'}</div>
+                                            <div className="text-sm text-gray-500">{(sale as any).user?.name || (sale as any).mechanicName || '-'}</div>
                                         </td>
-                                        <td className="px-6 py-4 font-mono text-gray-700">{sale.plate_number}</td>
+                                        <td className="px-6 py-4 font-mono text-gray-700">{(sale as any).plate_number || '-'}</td>
                                         <td className="px-6 py-4 font-bold text-gray-900">{formatPrice(sale.total)}</td>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-2">
-                                                <PaymentIcon method={sale.payment_method} />
-                                                <span className="capitalize">{sale.payment_method}</span>
+                                                <PaymentIcon method={(sale as any).payment_method || (sale as any).paymentMethod} />
+                                                <span className="capitalize">{(sale as any).payment_method || (sale as any).paymentMethod}</span>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
                                             <StatusBadge status={sale.status} />
                                         </td>
-                                        <td className="px-6 py-4 text-sm text-gray-500">{formatDate(sale.created_at)}</td>
+                                        <td className="px-6 py-4 text-sm text-gray-500">{formatDate((sale as any).created_at || (sale as any).createdAt)}</td>
                                         <td className="px-6 py-4 text-right">
-                                            <Link
-                                                href={route('admin.sales.show', sale.id)}
-                                                className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 font-medium"
-                                            >
-                                                <Eye className="h-4 w-4" />
-                                                View
-                                            </Link>
+                                            {!isOffline ? (
+                                                <Link
+                                                    href={route('admin.sales.show', sale.id)}
+                                                    className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 font-medium"
+                                                >
+                                                    <Eye className="h-4 w-4" />
+                                                    View
+                                                </Link>
+                                            ) : (
+                                                <button
+                                                    onClick={() => setViewSaleModal({ show: true, sale })}
+                                                    className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 font-medium"
+                                                >
+                                                    <Eye className="h-4 w-4" />
+                                                    View
+                                                </button>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}
-                                {sales.data.length === 0 && (
+                                {(isOffline ? displaySales.length === 0 : sales.data.length === 0) && (
                                     <tr>
                                         <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
-                                            No sales records found
+                                            {isOffline ? 'No offline sales found' : 'No sales records found'}
                                         </td>
                                     </tr>
                                 )}
@@ -248,6 +291,12 @@ export default function Index({ sales, branches, filters, userBranchId }: Props)
                     </div>
                 </div>
             </div>
+            {/* Offline View Modal */}
+            <ViewSaleModal
+                show={viewSaleModal.show}
+                onClose={() => setViewSaleModal({ show: false, sale: null })}
+                sale={viewSaleModal.sale}
+            />
         </AuthenticatedLayout>
     );
 }

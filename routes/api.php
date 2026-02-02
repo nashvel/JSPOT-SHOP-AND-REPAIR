@@ -29,9 +29,11 @@ Route::middleware('auth:sanctum')->prefix('sync')->group(function () {
     // Push endpoints (upload offline data to server)
     Route::post('/push/sales', [SyncController::class, 'pushSales']);
     Route::post('/push/job-orders', [SyncController::class, 'pushJobOrders']);
+    Route::post('/push/reservations', [SyncController::class, 'pushReservations']);
     Route::post('/push/attendance', [SyncController::class, 'pushAttendance']);
 
     // Pull endpoints (download data for offline cache)
     Route::get('/pull/categories', [SyncController::class, 'pullCategories']);
     Route::get('/pull/products', [SyncController::class, 'pullProducts']);
+    Route::get('/pull/reservations', [SyncController::class, 'pullReservations']);
 });

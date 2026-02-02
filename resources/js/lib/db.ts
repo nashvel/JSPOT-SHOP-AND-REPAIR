@@ -152,6 +152,40 @@ export interface OfflineSyncConflict {
     resolvedAt: Date | null;
 }
 
+export interface OfflineReservationItem {
+    id: string;
+    reservationId: string;
+    productId: string | null;
+    productName: string;
+    productType: 'product' | 'service';
+    categoryName: string | null;
+    quantity: number;
+    unitPrice: number;
+    total: number;
+}
+
+export interface OfflineReservation {
+    id: string;
+    serverId: number | null;
+    reservationNumber: string;
+    branchId: number;
+    customerName: string;
+    customerContact: string | null;
+    vehicleEngine: string | null;
+    vehicleChassis: string | null;
+    vehiclePlate: string | null;
+    reservationDate: Date;
+    issueDescription: string | null;
+    notes: string | null;
+    status: 'pending' | 'available' | 'in_progress' | 'completed' | 'cancelled';
+    items: OfflineReservationItem[];
+    mechanicIds: number[]; // Store IDs of assigned mechanics
+    synced: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+    qrToken: string | null;
+}
+
 // ============================================
 // Dexie Database Class
 // ============================================
@@ -161,6 +195,7 @@ class JspotDatabase extends Dexie {
     products!: Table<OfflineProduct, string>;
     sales!: Table<OfflineSale, string>;
     jobOrders!: Table<OfflineJobOrder, string>;
+    reservations!: Table<OfflineReservation, string>;
     attendance!: Table<OfflineAttendance, string>;
     conflicts!: Table<OfflineSyncConflict, string>;
 
@@ -184,6 +219,17 @@ class JspotDatabase extends Dexie {
             jobOrders: 'id, serverId, jobOrderNumber, branchId, status, synced, createdAt',
             attendance: 'id, serverId, userId, branchId, synced, createdAt',
             conflicts: 'id, type, itemId, branchId, resolved, detectedAt',
+        });
+
+        // Version 3: Add reservations table
+        this.version(3).stores({
+            categories: 'id, serverId, name, type, synced, branchId',
+            products: 'id, serverId, name, sku, type, categoryId, branchId, synced',
+            sales: 'id, serverId, saleNumber, branchId, status, synced, createdAt',
+            jobOrders: 'id, serverId, jobOrderNumber, branchId, status, synced, createdAt',
+            attendance: 'id, serverId, userId, branchId, synced, createdAt',
+            conflicts: 'id, type, itemId, branchId, resolved, detectedAt',
+            reservations: 'id, serverId, reservationNumber, branchId, status, synced, createdAt',
         });
     }
 }
@@ -211,6 +257,7 @@ export async function getUnsyncedCount(): Promise<number> {
         db.products.filter(r => !r.synced).count(),
         db.sales.filter(r => !r.synced).count(),
         db.jobOrders.filter(r => !r.synced).count(),
+        db.reservations.filter(r => !r.synced).count(),
         db.attendance.filter(r => !r.synced).count(),
     ]);
 
@@ -226,6 +273,7 @@ export async function clearAllData(): Promise<void> {
         db.products.clear(),
         db.sales.clear(),
         db.jobOrders.clear(),
+        db.reservations.clear(),
         db.attendance.clear(),
     ]);
 }

@@ -124,7 +124,9 @@ class SaleController extends Controller
             'customer_name' => 'required|string|max:255',
             'contact_number' => 'required|string|max:20',
             'employee_name' => 'required|string|max:255',
-            'mechanic_id' => 'nullable|exists:mechanics,id',
+            'mechanic_ids' => 'nullable|array',
+            'mechanic_ids.*' => 'exists:mechanics,id',
+            'mechanic_id' => 'nullable|exists:mechanics,id', // Deprecated, kept for backward compatibility
             'engine_number' => 'required|string|max:100',
             'chassis_number' => 'required|string|max:100',
             'plate_number' => 'required|string|max:20',
@@ -206,12 +208,15 @@ class SaleController extends Controller
             $total = $subtotal;
             $change = max(0, $validated['amount_paid'] - $total);
 
+            // Determine primary mechanic (first one selected)
+            $primaryMechanicId = $validated['mechanic_ids'][0] ?? $validated['mechanic_id'] ?? null;
+
             // Create sale
             $sale = Sale::create([
                 'sale_number' => Sale::generateSaleNumber(),
                 'branch_id' => $branchId,
                 'user_id' => $user->id,
-                'mechanic_id' => $validated['mechanic_id'] ?? null,
+                'mechanic_id' => $primaryMechanicId,
                 'customer_name' => $validated['customer_name'],
                 'contact_number' => $validated['contact_number'],
                 'employee_name' => $validated['employee_name'],
@@ -227,6 +232,13 @@ class SaleController extends Controller
                 'qr_token' => Sale::generateQrToken(),
                 'status' => 'completed',
             ]);
+
+            // Sync mechanics
+            if (!empty($validated['mechanic_ids'])) {
+                $sale->mechanics()->sync($validated['mechanic_ids']);
+            } elseif (!empty($validated['mechanic_id'])) {
+                $sale->mechanics()->sync([$validated['mechanic_id']]);
+            }
 
             // Create sale items
             foreach ($itemsData as $itemData) {
@@ -258,7 +270,7 @@ class SaleController extends Controller
                     'tracking_code' => \App\Models\JobOrder::generateTrackingCode(),
                     'branch_id' => $branchId,
                     'sale_id' => $sale->id,
-                    'mechanic_id' => $validated['mechanic_id'] ?? null,
+                    'mechanic_id' => $primaryMechanicId,
                     'customer_name' => $validated['customer_name'],
                     'contact_number' => $validated['contact_number'],
                     'vehicle_details' => "Plate: {$validated['plate_number']}",

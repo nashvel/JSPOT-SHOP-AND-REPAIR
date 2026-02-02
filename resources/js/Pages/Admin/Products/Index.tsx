@@ -56,7 +56,12 @@ export default function Index({ products, categories: initialCategories, branche
 
     const handleSubmit = (e: any) => {
         e.preventDefault();
-        post(route('admin.products.store'), {
+        // For services, set price to 0 since they use custom pricing at POS
+        const submitData = {
+            ...data,
+            price: data.type === 'service' ? '0' : data.price
+        };
+        router.post(route('admin.products.store'), submitData, {
             onSuccess: () => setModal(false),
         });
     };
@@ -227,7 +232,7 @@ export default function Index({ products, categories: initialCategories, branche
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SKU</th>
                                         {typeFilter !== 'service' && <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cost</th>}
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
+                                        {typeFilter !== 'service' && <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>}
                                         {typeFilter !== 'service' && <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>}
                                     </tr>
                                 </thead>
@@ -260,9 +265,11 @@ export default function Index({ products, categories: initialCategories, branche
                                                         {product.type === 'product' ? `₱${Number(product.cost || 0).toLocaleString()}` : 'N/A'}
                                                     </td>
                                                 )}
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
-                                                    ₱{Number(product.price).toLocaleString()}
-                                                </td>
+                                                {typeFilter !== 'service' && (
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                                                        ₱{Number(product.price).toLocaleString()}
+                                                    </td>
+                                                )}
                                                 {typeFilter !== 'service' && (
                                                     <td className="px-6 py-4 whitespace-nowrap">
                                                         {product.type === 'product' ? (
@@ -420,18 +427,20 @@ export default function Index({ products, categories: initialCategories, branche
                                     {errors.cost && <div className="text-red-500 text-xs mt-1">{errors.cost}</div>}
                                 </div>
                             )}
-                            <div>
-                                <InputLabel htmlFor="price" value="Price (PHP)" />
-                                <TextInput
-                                    id="price"
-                                    type="number"
-                                    value={data.price}
-                                    onChange={(e) => setData('price', e.target.value)}
-                                    className="mt-1 block w-full"
-                                    required
-                                />
-                                {errors.price && <div className="text-red-500 text-xs mt-1">{errors.price}</div>}
-                            </div>
+                            {data.type === 'product' && (
+                                <div>
+                                    <InputLabel htmlFor="price" value="Price (PHP)" />
+                                    <TextInput
+                                        id="price"
+                                        type="number"
+                                        value={data.price}
+                                        onChange={(e) => setData('price', e.target.value)}
+                                        className="mt-1 block w-full"
+                                        required
+                                    />
+                                    {errors.price && <div className="text-red-500 text-xs mt-1">{errors.price}</div>}
+                                </div>
+                            )}
                             {data.type === 'product' && (
                                 <div className="col-span-2">
                                     <InputLabel htmlFor="low_stock_threshold" value="Low Stock Threshold" />

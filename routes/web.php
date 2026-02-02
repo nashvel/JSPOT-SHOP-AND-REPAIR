@@ -11,6 +11,7 @@ Route::get('/track', [\App\Http\Controllers\PublicController::class, 'track'])->
 Route::post('/track/search', [\App\Http\Controllers\PublicController::class, 'searchJob'])->name('public.track.search');
 Route::post('/reserve', [\App\Http\Controllers\PublicController::class, 'storeReservation'])->name('public.reserve');
 Route::get('/receipt/{token}', [\App\Http\Controllers\PublicReceiptController::class, 'show'])->name('public.receipt');
+Route::get('/reservation/{token}', [\App\Http\Controllers\PublicReceiptController::class, 'showReservation'])->name('public.reservation');
 Route::get('/section/{slug}', [\App\Http\Controllers\PublicController::class, 'section'])->name('public.section');
 Route::get('/cart', [\App\Http\Controllers\PublicController::class, 'cart'])->name('public.cart');
 Route::get('/wishlist', [\App\Http\Controllers\PublicController::class, 'wishlist'])->name('public.wishlist');
@@ -45,6 +46,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('admin/job-orders', [\App\Http\Controllers\Admin\JobOrderController::class, 'index'])->name('admin.job-orders.index');
     Route::get('admin/job-orders/{jobOrder}/edit', [\App\Http\Controllers\Admin\JobOrderController::class, 'edit'])->name('admin.job-orders.edit');
     Route::put('admin/job-orders/{jobOrder}', [\App\Http\Controllers\Admin\JobOrderController::class, 'update'])->name('admin.job-orders.update');
+
+    // Reservations Management
+    Route::get('admin/reservations', [\App\Http\Controllers\Admin\ReservationController::class, 'index'])->name('admin.reservations.index');
+    Route::post('admin/reservations', [\App\Http\Controllers\Admin\ReservationController::class, 'store'])->name('admin.reservations.store');
+    Route::get('admin/reservations/{reservation}', [\App\Http\Controllers\Admin\ReservationController::class, 'show'])->name('admin.reservations.show');
+    Route::get('admin/reservations/{reservation}/ticket', [\App\Http\Controllers\Admin\ReservationController::class, 'ticket'])->name('admin.reservations.ticket');
+    Route::post('admin/reservations/{reservation}/add-items', [\App\Http\Controllers\Admin\ReservationController::class, 'addItems'])->name('admin.reservations.add-items');
+    Route::patch('admin/reservations/{reservation}/mechanics', [\App\Http\Controllers\Admin\ReservationController::class, 'updateMechanics'])->name('admin.reservations.update-mechanics');
+    Route::patch('admin/reservations/{reservation}/status', [\App\Http\Controllers\Admin\ReservationController::class, 'updateStatus'])->name('admin.reservations.update-status');
+    Route::delete('admin/reservations/{reservation}', [\App\Http\Controllers\Admin\ReservationController::class, 'destroy'])->name('admin.reservations.destroy');
 
     // Sales Management
     Route::get('admin/sales', [\App\Http\Controllers\Admin\SaleController::class, 'index'])->name('admin.sales.index');
@@ -125,7 +136,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             'settings' => $settings
         ]);
     })->name('admin.settings.index');
-    
+
     Route::post('admin/settings', [\App\Http\Controllers\Admin\SettingsController::class, 'update'])->name('admin.settings.update');
 });
 

@@ -157,7 +157,11 @@ export async function createOfflineSale(params: CreateSaleParams): Promise<Offli
     } = params;
 
     // Calculate totals
-    const subtotal = items.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
+    // Calculate totals - use customPrice for services if available
+    const subtotal = items.reduce((sum, item) => {
+        const price = (item as any).customPrice ?? item.product.price;
+        return sum + (price * item.quantity);
+    }, 0);
     const total = subtotal; // Add tax/discount logic if needed
     const changeAmount = Math.max(0, amountPaid - total);
 
@@ -185,14 +189,14 @@ export async function createOfflineSale(params: CreateSaleParams): Promise<Offli
             productType: item.product.type,
             categoryName: item.product.categoryName,
             quantity: item.quantity,
-            unitPrice: item.product.price,
-            total: item.product.price * item.quantity,
+            unitPrice: (item as any).customPrice ?? item.product.price,
+            total: ((item as any).customPrice ?? item.product.price) * item.quantity,
             paymentMethod: item.paymentMethod,
             referenceNumber: item.referenceNumber || null,
             transactions: [{
                 referenceNumber: item.referenceNumber || null,
                 quantity: item.quantity,
-                amount: item.product.price * item.quantity,
+                amount: ((item as any).customPrice ?? item.product.price) * item.quantity,
             }],
         })),
         subtotal,

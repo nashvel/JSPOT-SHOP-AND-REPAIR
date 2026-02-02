@@ -9,6 +9,9 @@ use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\JobOrder;
 use App\Models\Attendance;
+use App\Models\Reservation;
+use App\Models\ReservationItem;
+use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -52,16 +55,21 @@ class SyncController extends Controller
                 $sale = Sale::create([
                     'sale_number' => $saleData['sale_number'] ?? $this->generateSaleNumber($saleData['branch_id']),
                     'branch_id' => $saleData['branch_id'],
+                    'user_id' => auth()->id(), // Use authenticated user
+                    'employee_name' => auth()->user()->name ?? 'Unknown', // Required field
                     'mechanic_id' => $saleData['mechanic_id'] ?? null,
-                    'customer_id' => $saleData['customer_id'] ?? null,
+                    'customer_name' => $saleData['customer_name'] ?? 'Walk-in', // Handle missing customer name
+                    'contact_number' => $saleData['contact_number'] ?? 'N/A', // Handle missing contact
+                    'engine_number' => $saleData['engine_number'] ?? 'N/A',
+                    'chassis_number' => $saleData['chassis_number'] ?? 'N/A',
+                    'plate_number' => $saleData['plate_number'] ?? 'N/A',
                     'subtotal' => $saleData['subtotal'] ?? $saleData['total'],
-                    'tax_amount' => $saleData['tax_amount'] ?? 0,
-                    'discount_amount' => $saleData['discount_amount'] ?? 0,
                     'total' => $saleData['total'],
                     'amount_paid' => $saleData['amount_paid'] ?? $saleData['total'],
-                    'change_amount' => $saleData['change_amount'] ?? 0,
+                    'change' => $saleData['change_amount'] ?? 0,
                     'payment_method' => $saleData['payment_method'],
                     'reference_number' => $saleData['reference_number'] ?? null,
+                    'qr_token' => Str::random(64),
                     'status' => $saleData['status'] ?? 'completed',
                     'notes' => 'local_id:' . $saleData['local_id'],
                     'created_at' => $saleData['created_at'] ?? now(),
@@ -73,13 +81,9 @@ class SyncController extends Controller
                         'product_id' => $this->getProductServerId($itemData['product_id']),
                         'product_name' => $itemData['product_name'],
                         'product_type' => $itemData['product_type'] ?? 'product',
-                        'category_name' => $itemData['category_name'] ?? null,
                         'quantity' => $itemData['quantity'],
                         'unit_price' => $itemData['unit_price'],
                         'total' => $itemData['total'],
-                        'payment_method' => $itemData['payment_method'] ?? $saleData['payment_method'],
-                        'reference_number' => $itemData['reference_number'] ?? null,
-                        'transactions' => $itemData['transactions'] ?? null,
                     ]);
 
                     // Deduct stock for products
@@ -150,14 +154,13 @@ class SyncController extends Controller
                     'job_order_number' => $jobData['job_order_number'] ?? $this->generateJobOrderNumber($jobData['branch_id']),
                     'branch_id' => $jobData['branch_id'],
                     'customer_name' => $jobData['customer_name'],
-                    'customer_phone' => $jobData['customer_phone'] ?? null,
-                    'vehicle_type' => $jobData['vehicle_type'] ?? null,
-                    'vehicle_plate' => $jobData['vehicle_plate'] ?? null,
-                    'vehicle_model' => $jobData['vehicle_model'] ?? null,
+                    'contact_number' => $jobData['customer_phone'] ?? null,
+                    'vehicle_details' => ($jobData['vehicle_type'] ?? '') . ' ' . ($jobData['vehicle_model'] ?? ''),
+                    'plate_number' => $jobData['vehicle_plate'] ?? null,
                     'mechanic_id' => $jobData['mechanic_id'] ?? null,
                     'labor_cost' => $jobData['labor_cost'] ?? 0,
-                    'parts_total' => $jobData['parts_total'] ?? 0,
-                    'total' => $jobData['total'] ?? 0,
+                    'parts_cost' => $jobData['parts_total'] ?? 0,
+                    'total_cost' => $jobData['total'] ?? 0,
                     'status' => $jobData['status'] ?? 'pending',
                     'notes' => 'local_id:' . $jobData['local_id'] . ($jobData['notes'] ? "\n" . $jobData['notes'] : ''),
                     'created_at' => $jobData['created_at'] ?? now(),
@@ -195,7 +198,6 @@ class SyncController extends Controller
         $validated = $request->validate([
             'attendance' => 'required|array',
             'attendance.*.local_id' => 'required|string',
-            'attendance.*.user_id' => 'required|integer',
             'attendance.*.branch_id' => 'required|integer',
             'attendance.*.clock_in' => 'required|string',
         ]);
@@ -206,7 +208,7 @@ class SyncController extends Controller
         try {
             foreach ($validated['attendance'] as $attData) {
                 // Check if already synced
-                $existing = Attendance::where('notes', 'LIKE', '%local_id:' . $attData['local_id'] . '%')->first();
+                $existing = Attendance::where('remarks', 'LIKE', '%local_id:' . $attData['local_id'] . '%')->first();
 
                 if ($existing) {
                     $mappings[] = [
@@ -216,12 +218,18 @@ class SyncController extends Controller
                     continue;
                 }
 
+                $clockIn = \Carbon\Carbon::parse($attData['clock_in']);
+                $clockOut = isset($attData['clock_out']) ? \Carbon\Carbon::parse($attData['clock_out']) : null;
+
                 $attendance = Attendance::create([
-                    'user_id' => $attData['user_id'],
+                    'attendable_type' => \App\Models\User::class,
+                    'attendable_id' => auth()->id(),
                     'branch_id' => $attData['branch_id'],
-                    'clock_in' => $attData['clock_in'],
-                    'clock_out' => $attData['clock_out'] ?? null,
-                    'notes' => 'local_id:' . $attData['local_id'],
+                    'date' => $clockIn->toDateString(),
+                    'time_in' => $clockIn->toTimeString(),
+                    'time_out' => $clockOut ? $clockOut->toTimeString() : null,
+                    'status' => 'present',
+                    'remarks' => 'local_id:' . $attData['local_id'],
                     'created_at' => $attData['created_at'] ?? now(),
                 ]);
 
@@ -247,6 +255,157 @@ class SyncController extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Push reservations from offline to server
+     */
+    public function pushReservations(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'reservations' => 'required|array',
+            'reservations.*.local_id' => 'required|string',
+            'reservations.*.branch_id' => 'required|integer',
+            'reservations.*.customer_name' => 'required|string',
+            'reservations.*.items' => 'required|array',
+        ]);
+
+        $mappings = [];
+
+        DB::beginTransaction();
+        try {
+            foreach ($validated['reservations'] as $resData) {
+                // Check if already synced
+                $existing = Reservation::where('notes', 'LIKE', '%local_id:' . $resData['local_id'] . '%')->first();
+
+                if ($existing) {
+                    // Update status if changed
+                    if (isset($resData['status']) && $existing->status !== $resData['status']) {
+                        $existing->update(['status' => $resData['status']]);
+                    }
+
+                    $mappings[] = [
+                        'localId' => $resData['local_id'],
+                        'serverId' => $existing->id,
+                        'reservationNumber' => $existing->reservation_number,
+                        'qrToken' => $existing->qr_token,
+                    ];
+                    continue;
+                }
+
+                // Create new reservation
+                $reservation = Reservation::create([
+                    'reservation_number' => $resData['reservation_number'] ?? $this->generateReservationNumber($resData['branch_id']),
+                    'branch_id' => $resData['branch_id'],
+                    'customer_name' => $resData['customer_name'],
+                    'customer_contact' => $resData['customer_contact'] ?? null,
+                    'vehicle_engine' => $resData['vehicle_engine'] ?? null,
+                    'vehicle_chassis' => $resData['vehicle_chassis'] ?? null,
+                    'vehicle_plate' => $resData['vehicle_plate'] ?? null,
+                    'reservation_date' => $resData['reservation_date'] ?? now(),
+                    'issue_description' => $resData['issue_description'] ?? null,
+                    'notes' => 'local_id:' . $resData['local_id'] . ($resData['notes'] ? "\n" . $resData['notes'] : ''),
+                    'status' => $resData['status'] ?? 'pending',
+                    'qr_token' => Str::random(32),
+                    'created_at' => $resData['created_at'] ?? now(),
+                ]);
+
+                // Attach mechanics if any using pivot
+                if (!empty($resData['mechanic_ids'])) {
+                    $reservation->mechanics()->sync($resData['mechanic_ids']);
+                }
+
+                // Create reservation items
+                foreach ($resData['items'] as $itemData) {
+                    ReservationItem::create([
+                        'reservation_id' => $reservation->id,
+                        'product_id' => $this->getProductServerId($itemData['product_id']),
+                        'product_name' => $itemData['product_name'],
+                        'product_type' => $itemData['product_type'] ?? 'product',
+                        'category_name' => $itemData['category_name'] ?? null,
+                        'quantity' => $itemData['quantity'],
+                        'unit_price' => $itemData['unit_price'],
+                        'total' => $itemData['total'],
+                    ]);
+                }
+
+                $mappings[] = [
+                    'localId' => $resData['local_id'],
+                    'serverId' => $reservation->id,
+                    'reservationNumber' => $reservation->reservation_number,
+                    'qrToken' => $reservation->qr_token,
+                ];
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'mappings' => $mappings,
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Sync push reservations failed: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Pull reservations for offline cache (active only)
+     */
+    public function pullReservations(Request $request): JsonResponse
+    {
+        $branchId = $request->query('branch_id');
+
+        $query = Reservation::with(['items', 'mechanics'])
+            ->whereIn('status', ['pending', 'available', 'in_progress']);
+
+        if ($branchId) {
+            $query->where('branch_id', $branchId);
+        }
+
+        $reservations = $query->get()->map(function ($res) {
+            return [
+                'id' => $res->id,
+                'reservation_number' => $res->reservation_number,
+                'branch_id' => $res->branch_id,
+                'customer_name' => $res->customer_name,
+                'customer_contact' => $res->customer_contact,
+                'vehicle_engine' => $res->vehicle_engine,
+                'vehicle_chassis' => $res->vehicle_chassis,
+                'vehicle_plate' => $res->vehicle_plate,
+                'reservation_date' => $res->reservation_date,
+                'issue_description' => $res->issue_description,
+                'notes' => $res->notes,
+                'status' => $res->status,
+                'qr_token' => $res->qr_token,
+                'created_at' => $res->created_at,
+                'updated_at' => $res->updated_at,
+                'mechanic_ids' => $res->mechanics->pluck('id')->toArray(),
+                'items' => $res->items->map(function ($item) {
+                    return [
+                        'id' => $item->id,
+                        'product_id' => $item->product_id,
+                        'product_name' => $item->product_name,
+                        'product_type' => $item->product_type,
+                        'category_name' => $item->category_name,
+                        'quantity' => $item->quantity,
+                        'unit_price' => $item->unit_price,
+                        'total' => $item->total,
+                    ];
+                }),
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'reservations' => $reservations,
+        ]);
     }
 
     /**
@@ -331,6 +490,19 @@ class SyncController extends Controller
             ->count() + 1;
 
         return "JO-{$branchId}-{$date}-" . str_pad($count, 4, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Helper: Generate reservation number
+     */
+    private function generateReservationNumber(int $branchId): string
+    {
+        $date = now()->format('Ymd');
+        $count = Reservation::whereDate('created_at', today())
+            ->where('branch_id', $branchId)
+            ->count() + 1;
+
+        return "RES-{$branchId}-{$date}-" . str_pad($count, 4, '0', STR_PAD_LEFT);
     }
 
     /**

@@ -230,6 +230,7 @@ export default function Index({ products, branches, categories, filters, userBra
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SKU</th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cost</th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Revenue</th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
                                         <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                     </tr>
@@ -264,6 +265,9 @@ export default function Index({ products, branches, categories, filters, userBra
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
                                                         ₱{Number(product.price).toLocaleString()}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-green-600">
+                                                        ₱{Number(product.price - (product.cost || 0)).toLocaleString()}
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap">
                                                         <div className="flex items-center gap-2">

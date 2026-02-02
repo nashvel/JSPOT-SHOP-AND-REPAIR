@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Sale;
+use App\Models\Reservation;
 use Inertia\Inertia;
 
 class PublicReceiptController extends Controller
@@ -21,6 +22,17 @@ class PublicReceiptController extends Controller
         return Inertia::render('Public/Receipt', [
             'sale' => $sale,
             'jobOrder' => $jobOrder,
+        ]);
+    }
+
+    public function showReservation(string $token)
+    {
+        $reservation = Reservation::where('qr_token', $token)
+            ->with(['branch', 'items', 'mechanics'])
+            ->firstOrFail();
+
+        return Inertia::render('Public/ReservationReceipt', [
+            'reservation' => $reservation,
         ]);
     }
 }

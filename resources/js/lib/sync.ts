@@ -11,6 +11,7 @@
 import db, {
     OfflineCategory,
     OfflineProduct,
+    OfflineReservation,
     OfflineSale,
     OfflineJobOrder,
     OfflineAttendance,
@@ -45,6 +46,7 @@ interface SyncResult {
     pulled: {
         categories: number;
         products: number;
+        reservations: number;
     };
     errors: string[];
     progress: SyncProgress;
@@ -123,7 +125,7 @@ export async function syncToServer(): Promise<SyncResult> {
     const result: SyncResult = {
         success: false,
         pushed: { categories: 0, products: 0, sales: 0, jobOrders: 0, attendance: 0 },
-        pulled: { categories: 0, products: 0 },
+        pulled: { categories: 0, products: 0, reservations: 0 },
         errors: [],
         progress: currentProgress,
     };
@@ -379,7 +381,7 @@ export async function fetchFromServer(branchId: number): Promise<SyncResult> {
     const result: SyncResult = {
         success: false,
         pushed: { categories: 0, products: 0, sales: 0, jobOrders: 0, attendance: 0 },
-        pulled: { categories: 0, products: 0 },
+        pulled: { categories: 0, products: 0, reservations: 0 },
         errors: [],
         progress: currentProgress,
     };
@@ -450,6 +452,58 @@ export async function fetchFromServer(branchId: number): Promise<SyncResult> {
                         updatedAt: new Date(prod.updated_at),
                     });
                 }
+
+                // Fetch reservations for branch
+                const reservationsResponse = await axios.get(`/api/sync/pull/reservations?branch_id=${branchId}`);
+                if (reservationsResponse.data.success) {
+                    const serverReservations = reservationsResponse.data.reservations || [];
+
+                    for (const res of serverReservations) {
+                        const existing = await db.reservations.where('serverId').equals(res.id).first();
+
+                        if (!existing) {
+                            await db.reservations.add({
+                                id: crypto.randomUUID(),
+                                serverId: res.id,
+                                reservationNumber: res.reservation_number,
+                                branchId: res.branch_id,
+                                customerName: res.customer_name,
+                                customerContact: res.customer_contact,
+                                vehicleEngine: res.vehicle_engine,
+                                vehicleChassis: res.vehicle_chassis,
+                                vehiclePlate: res.vehicle_plate,
+                                reservationDate: new Date(res.reservation_date),
+                                issueDescription: res.issue_description,
+                                notes: res.notes,
+                                status: res.status,
+                                items: (res.items || []).map((item: any) => ({
+                                    id: crypto.randomUUID(),
+                                    reservationId: '', // Will be set implicitly by connection but good to have
+                                    productId: item.product_id,
+                                    productName: item.product_name,
+                                    productType: item.product_type,
+                                    categoryName: item.category_name,
+                                    quantity: Number(item.quantity),
+                                    unitPrice: Number(item.unit_price),
+                                    total: Number(item.total),
+                                })),
+                                mechanicIds: (res.mechanics || []).map((m: any) => m.id),
+                                synced: true,
+                                createdAt: new Date(res.created_at),
+                                updatedAt: new Date(res.updated_at),
+                                qrToken: res.qr_token,
+                            });
+                            result.pulled.reservations++;
+                        } else {
+                            await db.reservations.update(existing.id, {
+                                status: res.status,
+                                updatedAt: new Date(res.updated_at),
+                            });
+                        }
+                    }
+                }
+
+
             }
         }
 

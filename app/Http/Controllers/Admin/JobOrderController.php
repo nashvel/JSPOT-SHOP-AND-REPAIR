@@ -14,7 +14,7 @@ class JobOrderController extends Controller
     {
         $user = auth()->user();
 
-        $jobOrders = JobOrder::with('branch')
+        $jobOrders = JobOrder::with(['branch', 'sale.mechanics'])
             // Filter by branch if user belongs to a branch
             ->when($user->branch_id, function ($query) use ($user) {
                 $query->where('branch_id', $user->branch_id);
@@ -69,7 +69,7 @@ class JobOrderController extends Controller
         if ($oldStatus !== 'completed' && $newStatus === 'completed' && $jobOrder->mechanic_id && $jobOrder->labor_cost > 0) {
             $mechanic = $jobOrder->mechanic;
             $mechanic->increment('total_labor_earned', $jobOrder->labor_cost);
-            
+
             // Set completed_at timestamp
             $jobOrder->update(['completed_at' => now()]);
         }
@@ -78,7 +78,7 @@ class JobOrderController extends Controller
         if ($oldStatus === 'completed' && $newStatus !== 'completed' && $jobOrder->mechanic_id && $jobOrder->labor_cost > 0) {
             $mechanic = $jobOrder->mechanic;
             $mechanic->decrement('total_labor_earned', $jobOrder->labor_cost);
-            
+
             // Clear completed_at timestamp
             $jobOrder->update(['completed_at' => null]);
         }
