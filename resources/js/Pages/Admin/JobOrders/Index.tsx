@@ -1,7 +1,9 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
-import { ClipboardList, Clock, CheckCircle, AlertCircle, Search } from 'lucide-react';
+import { ClipboardList, Clock, CheckCircle, AlertCircle, Search, Wrench, Eye, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { useOfflineJobOrders } from '@/lib/useOfflineJobOrders';
+import { useOfflineData } from '@/lib/useOfflineData';
 
 interface JobOrder {
     id: number;
@@ -13,6 +15,12 @@ interface JobOrder {
     created_at: string;
     branch?: {
         name: string;
+    };
+    sale?: {
+        mechanics?: {
+            id: number;
+            name: string;
+        }[];
     };
 }
 
@@ -28,6 +36,12 @@ interface Props {
 export default function Index({ jobOrders, branches, filters, userBranchId }: Props) {
     const [search, setSearch] = useState('');
     const [branchId, setBranchId] = useState(filters.branch_id || '');
+    const [viewingOrder, setViewingOrder] = useState<any | null>(null);
+
+    // Offline Hooks
+    const effectiveBranchId = userBranchId || (branchId ? Number(branchId) : 0);
+    const { isOffline } = useOfflineData({ branchId: effectiveBranchId });
+    const { offlineJobOrders } = useOfflineJobOrders(effectiveBranchId);
 
     useEffect(() => {
         router.get(route('admin.job-orders.index'), {
@@ -39,7 +53,11 @@ export default function Index({ jobOrders, branches, filters, userBranchId }: Pr
         });
     }, [branchId]);
 
-    const filteredOrders = jobOrders.filter(order =>
+    const filteredOrders = isOffline ? offlineJobOrders.filter(order =>
+        order.jobOrderNumber.toLowerCase().includes(search.toLowerCase()) ||
+        order.customerName.toLowerCase().includes(search.toLowerCase()) ||
+        (order.vehicleModel && order.vehicleModel.toLowerCase().includes(search.toLowerCase()))
+    ) : jobOrders.filter(order =>
         order.tracking_code.toLowerCase().includes(search.toLowerCase()) ||
         order.customer_name.toLowerCase().includes(search.toLowerCase()) ||
         order.vehicle_details.toLowerCase().includes(search.toLowerCase())
@@ -81,7 +99,14 @@ export default function Index({ jobOrders, branches, filters, userBranchId }: Pr
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center justify-between mb-6">
                         <div>
-                            <h1 className="text-2xl font-bold text-gray-900">Job Orders</h1>
+                            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                                Job Orders
+                                {isOffline && (
+                                    <span className="px-2 py-0.5 rounded text-xs font-bold bg-gray-600 text-white">
+                                        OFFLINE MODE
+                                    </span>
+                                )}
+                            </h1>
                             <p className="text-gray-500">Track repair services and maintenance status</p>
                         </div>
                         <button className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 font-medium text-sm flex items-center gap-2">
@@ -130,6 +155,7 @@ export default function Index({ jobOrders, branches, filters, userBranchId }: Pr
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vehicle/Device</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Issue</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mechanics</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Branch</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
@@ -140,40 +166,66 @@ export default function Index({ jobOrders, branches, filters, userBranchId }: Pr
                                 {filteredOrders.map(order => (
                                     <tr key={order.id} className="hover:bg-gray-50">
                                         <td className="px-6 py-4 font-mono text-indigo-600 font-medium">
-                                            {order.tracking_code}
+                                            {(order as any).tracking_code || (order as any).jobOrderNumber}
+                                            {isOffline && !(order as any).synced && (
+                                                <span className="ml-2 px-1.5 py-0.5 text-[10px] bg-amber-100 text-amber-700 rounded-full">
+                                                    Unsynced
+                                                </span>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4 font-medium text-gray-900">
-                                            {order.customer_name}
+                                            {(order as any).customer_name || (order as any).customerName}
                                         </td>
                                         <td className="px-6 py-4 text-gray-700">
-                                            {order.vehicle_details}
+                                            {(order as any).vehicle_details || (order as any).vehicleModel || 'N/A'}
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
-                                            {order.description}
+                                            {(order as any).description || (order as any).notes || 'No description'}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-1">
+                                                <Wrench className="h-3 w-3 text-gray-400" />
+                                                <span className="text-sm text-gray-600">
+                                                    {(order as any).mechanicName || ((order as any).sale?.mechanics && (order as any).sale.mechanics.length > 0
+                                                        ? (order as any).sale.mechanics.map((m: any) => m.name).join(', ')
+                                                        : '—')}
+                                                </span>
+                                            </div>
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-500">
-                                            {order.branch?.name || '—'}
+                                            {(order as any).branch?.name || '-'}
                                         </td>
                                         <td className="px-6 py-4">
                                             <StatusBadge status={order.status} />
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-500">
-                                            {formatDate(order.created_at)}
+                                            {formatDate((order as any).created_at || (order as any).createdAt)}
                                         </td>
                                         <td className="px-6 py-4 text-right">
-                                            <Link
-                                                href={route('admin.job-orders.edit', order.id)}
-                                                className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 font-medium text-xs"
+                                            {!isOffline ? (
+                                                <Link
+                                                    href={route('admin.job-orders.edit', order.id)}
+                                                    className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 font-medium text-xs"
+                                                >
+                                                    Update
+                                                </Link>
+                                            ) : (
+                                                <span className="text-xs text-gray-400 italic">View Only</span>
+                                            )}
+                                            <button
+                                                onClick={() => setViewingOrder(order)}
+                                                className="inline-flex items-center gap-1 text-gray-600 hover:text-gray-900 font-medium text-xs ml-3"
                                             >
-                                                Update
-                                            </Link>
+                                                <Eye className="h-3 w-3" />
+                                                View
+                                            </button>
                                         </td>
                                     </tr>
                                 ))}
                                 {filteredOrders.length === 0 && (
                                     <tr>
-                                        <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
-                                            No job orders found
+                                        <td colSpan={9} className="px-6 py-12 text-center text-gray-500">
+                                            {isOffline ? 'No offline job orders found' : 'No job orders found'}
                                         </td>
                                     </tr>
                                 )}
@@ -182,6 +234,66 @@ export default function Index({ jobOrders, branches, filters, userBranchId }: Pr
                     </div>
                 </div>
             </div>
+
+            {/* View Modal */}
+            {viewingOrder && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+                        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-2xl">
+                            <div>
+                                <h2 className="text-xl font-bold text-gray-900">{viewingOrder.tracking_code}</h2>
+                                <p className="text-sm text-gray-500">{formatDate(viewingOrder.created_at)}</p>
+                            </div>
+                            <button onClick={() => setViewingOrder(null)} className="p-1 hover:bg-gray-200 rounded-full transition-colors">
+                                <X className="h-5 w-5 text-gray-500" />
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div>
+                                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Customer</h3>
+                                <p className="font-medium text-gray-900">{viewingOrder.customer_name}</p>
+                            </div>
+                            <div>
+                                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Vehicle Details</h3>
+                                <p className="font-medium text-gray-900">{viewingOrder.vehicle_details}</p>
+                            </div>
+                            <div>
+                                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Issue Description</h3>
+                                <p className="bg-gray-50 p-3 rounded-lg text-sm text-gray-700 leading-relaxed">
+                                    {viewingOrder.description}
+                                </p>
+                            </div>
+                            <div>
+                                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Assigned Mechanics</h3>
+                                <div className="flex flex-wrap gap-2">
+                                    {viewingOrder.sale?.mechanics && viewingOrder.sale.mechanics.length > 0 ? (
+                                        viewingOrder.sale.mechanics.map((m: any) => (
+                                            <span key={m.id} className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full text-sm font-medium">
+                                                <Wrench className="h-3 w-3" />
+                                                {m.name}
+                                            </span>
+                                        ))
+                                    ) : (
+                                        <span className="text-gray-500 text-sm italic">No mechanics assigned</span>
+                                    )}
+                                </div>
+                            </div>
+                            <div>
+                                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Status</h3>
+                                <StatusBadge status={viewingOrder.status} />
+                            </div>
+                        </div>
+                        <div className="p-6 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex justify-end">
+                            <button
+                                onClick={() => setViewingOrder(null)}
+                                className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </AuthenticatedLayout>
     );
 }

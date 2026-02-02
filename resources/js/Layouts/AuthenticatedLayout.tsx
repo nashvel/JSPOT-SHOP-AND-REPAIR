@@ -1,7 +1,9 @@
 import { PropsWithChildren, ReactNode, useState, useRef, useEffect } from 'react';
 import { Link, usePage, router } from '@inertiajs/react';
-import { LayoutDashboard, Users, FileText, Settings, LogOut, Shield, Search, Folder, LifeBuoy, MoreHorizontal, PanelLeftClose, ShoppingCart, ClipboardList, Package, ArrowLeftRight, Store, XCircle, MapPin, Receipt, BarChart3, PieChart, ClipboardCheck, Menu, Bell } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, Settings, LogOut, Shield, Search, Folder, LifeBuoy, MoreHorizontal, PanelLeftClose, ShoppingCart, ClipboardList, Package, ArrowLeftRight, Store, XCircle, MapPin, Receipt, BarChart3, PieChart, ClipboardCheck, Menu, Bell, Wifi, WifiOff, RefreshCw } from 'lucide-react';
 import ApplicationLogo from '@/Components/ApplicationLogo';
+import { getUnsyncedCount, syncToServer, isSyncInProgress, setupAutoSync, stopAutoSync, onSyncProgress, getSyncProgress } from '@/lib/sync';
+import { SyncProgress } from '@/lib/syncQueue';
 
 const DropdownNotification = ({ lowStockState }: { lowStockState: any }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -97,6 +99,143 @@ const DropdownNotification = ({ lowStockState }: { lowStockState: any }) => {
 };
 
 
+
+const SyncModal = () => {
+    const [progress, setProgress] = useState<SyncProgress>(getSyncProgress());
+    const [visible, setVisible] = useState(false);
+
+    useEffect(() => {
+        // Initial check
+        const current = getSyncProgress();
+        if (current.status === 'syncing') {
+            setVisible(true);
+            setProgress(current);
+        }
+
+        const unsubscribe = onSyncProgress((p) => {
+            setVisible(p.status === 'syncing');
+            setProgress(p);
+        });
+
+        return unsubscribe;
+    }, []);
+
+    if (!visible) return null;
+
+    return (
+        <div className="fixed inset-0 z-[60] bg-gray-900/50 backdrop-blur-sm flex items-center justify-center">
+            <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-4 text-center animate-in fade-in zoom-in-95 duration-200">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-indigo-100 mb-4">
+                    <RefreshCw className="h-8 w-8 text-indigo-600 animate-spin" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-900 mb-2">Syncing Data...</h3>
+                <p className="text-sm text-gray-500 mb-6">{progress.currentStep || 'Please wait while we sync your data.'}</p>
+
+                <div className="w-full bg-gray-200 rounded-full h-2.5 mb-2 overflow-hidden">
+                    <div
+                        className="bg-indigo-600 h-2.5 rounded-full transition-all duration-300 ease-out"
+                        style={{ width: `${Math.max(5, progress.percentage)}%` }}
+                    ></div>
+                </div>
+                <div className="flex justify-between text-xs text-gray-400">
+                    <span>{progress.completedItems} / {progress.totalItems} items</span>
+                    <span>{progress.percentage}%</span>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// Connection Status Indicator
+const ConnectionStatus = () => {
+    const [isOnline, setIsOnline] = useState(navigator.onLine);
+    const [unsyncedCount, setUnsyncedCount] = useState(0);
+    const [syncing, setSyncing] = useState(false);
+
+    useEffect(() => {
+        const handleOnline = () => setIsOnline(true);
+        const handleOffline = () => setIsOnline(false);
+
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+
+        // Check unsynced count every 30 seconds
+        const updateCount = async () => {
+            try {
+                const count = await getUnsyncedCount();
+                setUnsyncedCount(count);
+            } catch (e) {
+                console.error('Failed to get unsynced count:', e);
+            }
+        };
+        updateCount();
+        const interval = setInterval(updateCount, 30000);
+
+        return () => {
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener('offline', handleOffline);
+            clearInterval(interval);
+        };
+    }, []);
+
+    const handleSync = async () => {
+        if (syncing || !isOnline) return;
+        setSyncing(true);
+        try {
+            await syncToServer();
+            const count = await getUnsyncedCount();
+            setUnsyncedCount(count);
+        } catch (e) {
+            console.error('Manual sync failed:', e);
+        } finally {
+            setSyncing(false);
+        }
+    };
+
+    return (
+        <div className="flex items-center gap-2">
+            {/* Connection indicator */}
+            <div
+                className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${isOnline
+                    ? 'bg-green-50 text-green-700'
+                    : 'bg-red-50 text-red-700'
+                    }`}
+            >
+                {isOnline ? (
+                    <Wifi className="h-3.5 w-3.5" />
+                ) : (
+                    <WifiOff className="h-3.5 w-3.5" />
+                )}
+                <span className="hidden sm:inline">{isOnline ? 'Online' : 'Offline'}</span>
+            </div>
+
+            {/* Sync button with pending count */}
+            {unsyncedCount > 0 && isOnline && (
+                <button
+                    onClick={handleSync}
+                    disabled={syncing}
+                    className="flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors disabled:opacity-50"
+                    title={`${unsyncedCount} items pending sync`}
+                >
+                    <RefreshCw className={`h-3.5 w-3.5 ${syncing ? 'animate-spin' : ''}`} />
+                    <span>{unsyncedCount}</span>
+                </button>
+            )}
+
+            {/* Offline pending indicator */}
+            {unsyncedCount > 0 && !isOnline && (
+                <div
+                    className="flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600"
+                    title={`${unsyncedCount} items will sync when online`}
+                >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    <span>{unsyncedCount} pending</span>
+                </div>
+            )}
+        </div>
+    );
+};
+
 export default function Authenticated({
     children,
     header,
@@ -104,6 +243,17 @@ export default function Authenticated({
     const { auth, impersonating } = usePage().props as any;
     const user = auth.user;
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+    // Initialize auto-sync
+    useEffect(() => {
+        // Use user's branch ID or 0 for all branches
+        const branchId = user.branch_id ? Number(user.branch_id) : 0;
+        setupAutoSync(branchId);
+
+        return () => {
+            stopAutoSync();
+        };
+    }, [user.branch_id]);
 
     // Icon mapping
     const iconMap: Record<string, any> = {
@@ -152,6 +302,9 @@ export default function Authenticated({
                     onClick={() => setIsSidebarOpen(false)}
                 />
             )}
+
+            {/* Sync Blocking Modal */}
+            <SyncModal />
 
             {/* Sidebar */}
             <div className={`fixed inset-y-0 left-0 z-50 w-64 border-r border-gray-200 bg-white flex flex-col transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
@@ -295,7 +448,8 @@ export default function Authenticated({
                     </div>
 
                     {/* Mobile Actions */}
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                        <ConnectionStatus />
                         <DropdownNotification lowStockState={(usePage().props as any).lowStockState} />
                         <div className="h-8 w-8 rounded-full bg-gray-100 overflow-hidden border border-gray-200">
                             <img src="/user.png" alt="Profile" className="h-full w-full object-cover" />
@@ -309,6 +463,7 @@ export default function Authenticated({
                         {header}
                     </h1>
                     <div className="hidden lg:flex items-center gap-4">
+                        <ConnectionStatus />
                         <DropdownNotification lowStockState={(usePage().props as any).lowStockState} />
                         <div className="flex items-center gap-3 border-l pl-4 ml-2">
                             <div className="text-right hidden sm:block">

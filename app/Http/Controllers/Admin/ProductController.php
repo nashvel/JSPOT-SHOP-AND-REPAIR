@@ -86,16 +86,24 @@ class ProductController extends Controller
 
     public function store(Request $request)
     {
+        $isService = $request->type === 'service';
+
         $validated = $request->validate([
             'type' => 'required|in:product,service',
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'sku' => 'nullable|string|unique:products',
-            'price' => 'required|numeric|min:0',
-            'cost' => 'required|numeric|min:0',
+            'price' => $isService ? 'nullable|numeric|min:0' : 'required|numeric|min:0',
+            'cost' => $isService ? 'nullable|numeric|min:0' : 'required|numeric|min:0',
             'category_id' => 'nullable|exists:categories,id',
             'low_stock_threshold' => 'nullable|integer|min:0',
         ]);
+
+        // For services, set default price and cost if not provided
+        if ($isService) {
+            $validated['price'] = $validated['price'] ?? 0;
+            $validated['cost'] = $validated['cost'] ?? 0;
+        }
 
         $user = auth()->user();
         $product = Product::create($validated);

@@ -95,4 +95,10 @@ class Sale extends Model
     {
         return $this->hasMany(JobOrder::class);
     }
+
+    // Multi-mechanic support
+    public function mechanics()
+    {
+        return $this->belongsToMany(Mechanic::class, 'mechanic_sale');
+    }
 }
